@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soni's Sales Dashboard - Revenue & Operations Analytics</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap Icons CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- Project Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Supabase JS v2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="light-mode">
+
+    <div class="app-shell">
+        <!-- ========================================================
+             COLLAPSIBLE SIDEBAR NAVIGATION  
+             ======================================================== -->
+        <aside class="sidebar" id="sidebar">
+            <!-- Floating Sidebar Collapse Toggle Handle -->
+            <button class="sidebar-toggle-pill" onclick="toggleSidebar()" title="Toggle Sidebar">
+                <i class="bi bi-chevron-left" id="sidebar-toggle-icon"></i>
+            </button>
+
+            <div class="sidebar-header">
+                <a href="#" class="sidebar-brand">
+                    <div class="brand-icon">
+                        <i class="bi bi-bar-chart-line-fill"></i>
+                    </div>
+                    <div class="brand-text">
+                        <span class="brand-title">SoniSales</span>
+                        <span class="brand-subtitle">Analytics Pro</span>
+                    </div>
+                </a>
+            </div>
+
+            <nav class="sidebar-menu">
+                <span class="menu-category-label">Main Views</span>
+                
+                <a class="nav-link active" data-tab="overview" onclick="switchTab('overview')">
+                    <i class="bi bi-grid-1x2-fill"></i>
+                    <span>Overview Dashboard</span>
+                </a>
+                
+                <a class="nav-link" data-tab="analytics" onclick="switchTab('analytics')">
+                    <i class="bi bi-graph-up-arrow"></i>
+                    <span>Visual Analytics</span>
+                </a>
+                
+                <a class="nav-link" data-tab="records" onclick="switchTab('records')">
+                    <i class="bi bi-table"></i>
+                    <span>Data Records</span>
+                </a>
+
+                <span class="menu-category-label">Management</span>
+                
+                <a class="nav-link" onclick="openModal('rlsModal')">
+                    <i class="bi bi-shield-lock-fill text-amber"></i>
+                    <span>SQL RLS Setup</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-user-mini">
+                    <div class="avatar">SS</div>
+                    <div class="user-info">
+                        <span class="user-name">Siddarth Soni</span>
+                        <span class="user-role">Sales Director</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ========================================================
+             MAIN CONTENT WRAPPER
+             ======================================================== -->
+        <div class="main-wrapper">
+            <!-- TOP NAVBAR HEADER -->
+            <header class="top-navbar">
+                <div class="navbar-left">
+                    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <div class="page-breadcrumb">
+                        <h2 class="page-title" id="page-current-title">Overview Dashboard</h2>
+                        <span class="page-subtitle">Real-time revenue performance & operational metrics</span>
+                    </div>
+                </div>
+
+                <div class="navbar-right">
+                    <!-- Live Clock Badge -->
+                    <div class="date-time-badge">
+                        <i class="bi bi-clock-history"></i>
+                        <span id="current-date-time">Loading clock...</span>
+                    </div>
+
+                    <!-- Supabase Connection Pill -->
+                    <div id="connection-status" class="status-badge">
+                        <span class="pulse-dot"></span> Supabase Active
+                    </div>
+
+                    <!-- Notification Bell Dropdown -->
+                    <div style="position: relative;">
+                        <button class="nav-action-btn" onclick="toggleNotificationMenu()" title="Notifications">
+                            <i class="bi bi-bell-fill"></i>
+                            <span class="notification-dot"></span>
+                        </button>
+
+                        <div class="dropdown-menu" id="notification-dropdown">
+                            <div class="dropdown-header">
+                                <h4>Notifications</h4>
+                                <span class="badge badge-growth">3 New</span>
+                            </div>
+                            <div class="notification-item">
+                                <div class="notification-icon icon-emerald"><i class="bi bi-check-circle-fill"></i></div>
+                                <div>
+                                    <div style="font-size: 12.5px; font-weight: 700;">New Sale Completed</div>
+                                    <div style="font-size: 11px; color: var(--text-dim);">Order #1042 ($2,450.00)</div>
+                                </div>
+                            </div>
+                            <div class="notification-item">
+                                <div class="notification-icon icon-amber"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                                <div>
+                                    <div style="font-size: 12.5px; font-weight: 700;">Pending Approval</div>
+                                    <div style="font-size: 11px; color: var(--text-dim);">Tokyo Regional Order</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dark / Light Mode Sliding Switch Toggle -->
+                    <div class="theme-switch-wrapper">
+                        <input type="checkbox" id="theme-switch-checkbox" class="theme-switch-checkbox" onchange="toggleTheme()" checked>
+                        <label for="theme-switch-checkbox" class="theme-switch-label" title="Toggle Light / Dark Mode">
+                            <i class="bi bi-moon-stars-fill moon-icon"></i>
+                            <i class="bi bi-sun-fill sun-icon"></i>
+                            <span class="theme-switch-ball"></span>
+                        </label>
+                    </div>
+
+                    <!-- User Profile Pill -->
+                    <div class="user-profile-pill">
+                        <div class="avatar" style="width: 28px; height: 28px; font-size: 11px;">SS</div>
+                        <span style="font-size: 13px; font-weight: 700; color: var(--text-main);">Siddarth Soni</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- CONTENT CONTAINER -->
+            <main class="content-container">
+                <!-- RLS Policy Notice Banner -->
+                <div id="rls-banner" class="alert-banner" style="display: none;">
+                    <div class="banner-content">
+                        <i class="bi bi-shield-exclamation banner-icon"></i>
+                        <span>Notice: Supabase Connected. Row Level Security (RLS) policies are active on public tables.</span>
+                    </div>
+                    <button class="btn btn-sm btn-primary" onclick="openModal('rlsModal')">
+                        <i class="bi bi-magic"></i> Fix RLS in 1-Click
+                    </button>
+                </div>
+
+                <!-- Global Search & Filter Controls Bar -->
+                <section class="filter-bar">
+                    <div class="search-box">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" id="search-input" placeholder="Search orders, amounts, users...">
+                    </div>
+
+                    <div class="filter-group">
+                        <select id="filter-date" class="select-filter">
+                            <option value="ALL">All Time</option>
+                            <option value="TODAY">Today's Sales</option>
+                            <option value="7DAYS">Last 7 Days</option>
+                            <option value="MONTHLY">This Month</option>
+                            <option value="30DAYS">Last 30 Days</option>
+                        </select>
+
+                        <select id="filter-destination" class="select-filter">
+                            <option value="ALL">All Destinations</option>
+                        </select>
+
+                        <select id="filter-region" class="select-filter">
+                            <option value="ALL">All Regions</option>
+                        </select>
+                    </div>
+                </section>
+
+                <!-- ========================================================
+                     TAB 1: OVERVIEW DASHBOARD
+                     ======================================================== -->
+                <section id="tab-overview" class="tab-page">
+                    <!-- Summary KPI Cards Grid -->
+                    <div class="summary-cards-grid">
+                        <!-- Card 1: Today's Sales -->
+                        <div class="summary-card">
+                            <div class="summary-card-header">
+                                <span class="summary-card-title">Today's Sales</span>
+                                <div class="summary-card-icon icon-blue"><i class="bi bi-calendar-check-fill"></i></div>
+                            </div>
+                            <div class="summary-card-value" id="card-today-sales">$0.00</div>
+                            <div class="summary-card-footer">
+                                <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +14.2%</span>
+                                <span>Sum of Today</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Total Revenue -->
+                        <div class="summary-card">
+                            <div class="summary-card-header">
+                                <span class="summary-card-title">Total Revenue</span>
+                                <div class="summary-card-icon icon-purple"><i class="bi bi-currency-dollar"></i></div>
+                            </div>
+                            <div class="summary-card-value" id="card-monthly-sales">$431,100.16</div>
+                            <div class="summary-card-footer">
+                                <span class="trend-badge trend-up"><i class="bi bi-graph-up-arrow"></i> +28.4%</span>
+                                <span>Net Total Revenue</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 3: Total Orders -->
+                        <div class="summary-card">
+                            <div class="summary-card-header">
+                                <span class="summary-card-title">Total Orders</span>
+                                <div class="summary-card-icon icon-cyan"><i class="bi bi-bag-check-fill"></i></div>
+                            </div>
+                            <div class="summary-card-value" id="card-total-orders">162</div>
+                            <div class="summary-card-footer">
+                                <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +8.1%</span>
+                                <span>Total Volume</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 4: Avg Order Value -->
+                        <div class="summary-card">
+                            <div class="summary-card-header">
+                                <span class="summary-card-title">Avg Order Value</span>
+                                <div class="summary-card-icon icon-amber"><i class="bi bi-calculator-fill"></i></div>
+                            </div>
+                            <div class="summary-card-value" id="rev-aov">$1,672.69</div>
+                            <div class="summary-card-footer">
+                                <span class="trend-badge trend-neutral"><i class="bi bi-dash"></i> Mean</span>
+                                <span>Revenue / Orders</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 5: Top Destination -->
+                        <div class="summary-card">
+                            <div class="summary-card-header">
+                                <span class="summary-card-title">Top Destination</span>
+                                <div class="summary-card-icon icon-emerald"><i class="bi bi-geo-alt-fill"></i></div>
+                            </div>
+                            <div class="summary-card-value" id="card-top-destination" style="font-size: 21px;">Tokyo, Japan</div>
+                            <div class="summary-card-footer">
+                                <span class="trend-badge trend-up"><i class="bi bi-fire"></i> Leader</span>
+                                <span>Highest Demand</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 6: Top Category -->
+                        <div class="summary-card">
+                            <div class="summary-card-header">
+                                <span class="summary-card-title">Top Category</span>
+                                <div class="summary-card-icon icon-rose"><i class="bi bi-pie-chart-fill"></i></div>
+                            </div>
+                            <div class="summary-card-value" id="card-top-region" style="font-size: 21px;">General</div>
+                            <div class="summary-card-footer">
+                                <span class="trend-badge trend-up"><i class="bi bi-trophy-fill"></i> Leading</span>
+                                <span>42.5% Market Share</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row: Real-Time Revenue Timeline & Category Breakdown -->
+                    <div class="charts-row-2">
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3><i class="bi bi-graph-up-arrow text-primary"></i> Real-Time Revenue Timeline</h3>
+                                <span class="badge badge-growth"><i class="bi bi-arrow-repeat"></i> Live Sync</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="lineChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3><i class="bi bi-pie-chart-fill text-cyan"></i> Category Breakdown</h3>
+                                <span class="badge badge-completed">Share %</span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="doughnutChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Grid Section -->
+                    <div class="performance-grid">
+                        <div class="performance-card">
+                            <div class="performance-card-header">
+                                <h3><i class="bi bi-clock-history text-amber me-2"></i> Top Pending Orders by Destination</h3>
+                            </div>
+                            <div class="performance-list" id="top-pending-list"></div>
+                        </div>
+
+                        <div class="performance-card">
+                            <div class="performance-card-header">
+                                <h3><i class="bi bi-trophy-fill text-purple me-2"></i> Top Regional Sales Performance</h3>
+                            </div>
+                            <div class="performance-list" id="top-regional-list"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================
+                     TAB 2: VISUAL ANALYTICS & GRAPHS
+                     ======================================================== -->
+                <section id="tab-analytics" class="tab-page hidden">
+                    <div class="charts-row-3">
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3><i class="bi bi-bar-chart-steps text-cyan"></i> Sales by Destination</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="barChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3><i class="bi bi-activity text-emerald"></i> Daily Sales Performance</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="areaChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <h3><i class="bi bi-pie-chart text-amber"></i> Pending vs Completed Orders</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="pendingChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================
+                     TAB 3: DATA RECORDS & TABLES
+                     ======================================================== -->
+                <section id="tab-records" class="tab-page hidden">
+                    <div class="tables-grid">
+                        <!-- Orders Data Table -->
+                        <div class="table-card">
+                            <div class="table-card-header">
+                                <h3><i class="bi bi-bag-check-fill text-primary"></i> Orders Transaction Records</h3>
+                                <span class="badge badge-growth" id="orders-count-badge">Live Records</span>
+                            </div>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Order No</th>
+                                            <th>User ID</th>
+                                            <th>Product ID</th>
+                                            <th>Gross Amount</th>
+                                            <th>Discount</th>
+                                            <th>Net Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="orders-tbody">
+                                        <!-- Dynamically Rendered -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="table-footer">
+                                <span id="orders-page-info">Loading...</span>
+                                <div class="pagination-controls">
+                                    <button class="btn btn-sm btn-secondary" onclick="prevOrdersPage()"><i class="bi bi-chevron-left"></i> Prev</button>
+                                    <button class="btn btn-sm btn-secondary" onclick="nextOrdersPage()">Next <i class="bi bi-chevron-right"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Users Data Table -->
+                        <div class="table-card">
+                            <div class="table-card-header">
+                                <h3><i class="bi bi-people-fill text-cyan"></i> Registered Customers</h3>
+                            </div>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>User ID</th>
+                                            <th>Customer Name</th>
+                                            <th>Contact Mobile</th>
+                                            <th>User Role</th>
+                                            <th>Joined Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="users-tbody">
+                                        <!-- Dynamically Rendered -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="table-footer">
+                                <span id="users-page-info">Loading...</span>
+                                <div class="pagination-controls">
+                                    <button class="btn btn-sm btn-secondary" onclick="prevUsersPage()"><i class="bi bi-chevron-left"></i> Prev</button>
+                                    <button class="btn btn-sm btn-secondary" onclick="nextUsersPage()">Next <i class="bi bi-chevron-right"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Destinations Data Table -->
+                        <div class="table-card">
+                            <div class="table-card-header">
+                                <h3><i class="bi bi-geo-alt-fill text-emerald"></i> Destinations Catalog</h3>
+                            </div>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Destination Name</th>
+                                            <th>Category Type</th>
+                                            <th>Included Highlights</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="destinations-tbody">
+                                        <!-- Dynamically Rendered -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="table-footer">
+                                <span id="destinations-page-info">Loading...</span>
+                                <div class="pagination-controls">
+                                    <button class="btn btn-sm btn-secondary" onclick="prevDestinationsPage()"><i class="bi bi-chevron-left"></i> Prev</button>
+                                    <button class="btn btn-sm btn-secondary" onclick="nextDestinationsPage()">Next <i class="bi bi-chevron-right"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal: SQL RLS Fix Script -->
+    <div id="rlsModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="bi bi-shield-lock text-amber me-2"></i> Supabase RLS Fix Script</h3>
+                <button class="modal-close" onclick="closeModal('rlsModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; color: var(--text-muted);">
+                    Copy and execute this script in your <a href="https://supabase.com/dashboard" target="_blank" style="color: var(--primary); font-weight: 600;">Supabase SQL Editor</a> to enable public API access for your 3 tables:
+                </p>
+                <div class="sql-box" id="sql-code">ALTER TABLE IF EXISTS public.users_rows DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.orders_rows DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.destinations_rows DISABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public users" ON public.users_rows FOR SELECT USING (true);
+CREATE POLICY "Allow public orders" ON public.orders_rows FOR SELECT USING (true);
+CREATE POLICY "Allow public destinations" ON public.destinations_rows FOR SELECT USING (true);</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('rlsModal')">Close</button>
+                <button type="button" class="btn btn-primary" onclick="copyRlsSQL()"><i class="bi bi-clipboard"></i> Copy SQL Fix</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- Project JavaScript Engines -->
+    <script src="charts.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
