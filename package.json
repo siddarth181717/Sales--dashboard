@@ -1,0 +1,19 @@
+{
+  "name": "novasales-dashboard",
+  "version": "2.0.0",
+  "description": "Nova Antigravity Luxury Portfolio & Sales Analytics Dashboard",
+  "main": "app.js",
+  "scripts": {
+    "start": "python -m http.server 8080"
+  },
+  "keywords": [
+    "dashboard",
+    "antigravity",
+    "particles",
+    "webgl",
+    "portfolio",
+    "analytics"
+  ],
+  "author": "Antigravity",
+  "license": "MIT"
+}
