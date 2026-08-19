@@ -52,11 +52,117 @@ let ordersPage = 1;
 let destinationsPage = 1;
 const pageSize = 8;
 
+// Live Exchange Rate State & API Engine Config
+let fxApiKey = localStorage.getItem('soni_fx_api_key') || '';
+let currentFxRate = 83.95; // Default baseline USD to INR exchange rate
+let shouldConvertUsdToInr = localStorage.getItem('soni_convert_usd') !== 'false';
+let fxLastUpdated = 'Real-Time Engine Active';
+
+// Initialize FX Engine
+function initFxEngine() {
+    const savedKey = localStorage.getItem('soni_fx_api_key');
+    const apiKeyInput = document.getElementById('api-key-input');
+    if (apiKeyInput && savedKey) {
+        apiKeyInput.value = savedKey;
+    }
+    
+    const checkbox = document.getElementById('convert-usd-checkbox');
+    if (checkbox) {
+        checkbox.checked = shouldConvertUsdToInr;
+    }
+
+    fetchLiveExchangeRate(false);
+}
+
+// Fetch live USD -> INR rate from API or open endpoint
+async function fetchLiveExchangeRate(showToasts = false) {
+    const key = localStorage.getItem('soni_fx_api_key') || '';
+    let fetchedRate = null;
+
+    try {
+        if (key) {
+            const res = await fetch(`https://v6.exchangerate-api.com/v6/${key}/latest/USD`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.conversion_rates && data.conversion_rates.INR) {
+                    fetchedRate = data.conversion_rates.INR;
+                }
+            }
+        }
+        
+        if (!fetchedRate) {
+            const openRes = await fetch('https://open.er-api.com/v6/latest/USD');
+            if (openRes.ok) {
+                const openData = await openRes.json();
+                if (openData.rates && openData.rates.INR) {
+                    fetchedRate = openData.rates.INR;
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('FX Rate API fetch error:', err);
+    }
+
+    if (fetchedRate) {
+        currentFxRate = fetchedRate;
+        fxLastUpdated = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        if (showToasts) {
+            showToast(`⚡ Live Exchange Rate Synced: 1 USD = ₹${currentFxRate.toFixed(2)} INR`, 'success');
+        }
+    } else {
+        if (showToasts) {
+            showToast(`ℹ️ Exchange rate set: 1 USD = ₹${currentFxRate.toFixed(2)} INR`, 'info');
+        }
+    }
+
+    updateFxUI();
+    renderDashboard();
+}
+
+function saveApiKeyFromModal() {
+    const input = document.getElementById('api-key-input');
+    const key = input ? input.value.trim() : '';
+    localStorage.setItem('soni_fx_api_key', key);
+    fxApiKey = key;
+    showToast(key ? '🔑 API Key Saved! Retrieving live exchange rate...' : 'ℹ️ API Key cleared', 'success');
+    closeModal('apiKeyModal');
+    fetchLiveExchangeRate(true);
+}
+
+function toggleUsdConversion(checked) {
+    shouldConvertUsdToInr = checked;
+    localStorage.setItem('soni_convert_usd', checked ? 'true' : 'false');
+    showToast(checked ? 'INR Live Conversion Enabled' : 'Raw Values Display Active', 'info');
+    renderDashboard();
+}
+
+function updateFxUI() {
+    const rateText = document.getElementById('fx-rate-text');
+    if (rateText) rateText.textContent = `1 USD = ₹${currentFxRate.toFixed(2)}`;
+
+    const modalDisplay = document.getElementById('modal-fx-rate-display');
+    if (modalDisplay) modalDisplay.textContent = `1 USD = ₹${currentFxRate.toFixed(4)} INR`;
+
+    const modalUpdated = document.getElementById('modal-fx-last-updated');
+    if (modalUpdated) modalUpdated.textContent = `Last Updated: ${fxLastUpdated}`;
+
+    const notifItem = document.getElementById('notif-order-amount');
+    if (notifItem) notifItem.textContent = `Order #1042 (${formatRupees(2450)})`;
+}
+
+// Currency Formatting Helper
+function formatRupees(val) {
+    const num = Number(val) || 0;
+    const finalVal = shouldConvertUsdToInr ? num * currentFxRate : num;
+    return `₹${finalVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
     initClock();
     initTheme();
     initSupabase();
+    initFxEngine();
     setupEventListeners();
     populateFilterDropdowns();
     fetchSupabaseData();
@@ -385,10 +491,10 @@ function updateSummaryCards(filteredOrders) {
     const topDestEl = document.getElementById('card-top-destination');
     const topRegionEl = document.getElementById('card-top-region');
 
-    if (todayEl) todayEl.textContent = `$${todaySales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (monthlyEl) monthlyEl.textContent = `$${netRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (todayEl) todayEl.textContent = formatRupees(todaySales);
+    if (monthlyEl) monthlyEl.textContent = formatRupees(netRevenue);
     if (totalOrdersEl) totalOrdersEl.textContent = totalOrders.toLocaleString();
-    if (aovEl) aovEl.textContent = `$${aov.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (aovEl) aovEl.textContent = formatRupees(aov);
     if (topDestEl) topDestEl.textContent = topDest;
     if (topRegionEl) topRegionEl.textContent = topRegion;
 }
@@ -397,6 +503,7 @@ function updateSummaryCards(filteredOrders) {
 function updateCharts(filteredOrders) {
     const fullMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const monthMap = {};
+    const multiplier = shouldConvertUsdToInr ? currentFxRate : 1;
     
     fullMonths.forEach(m => monthMap[m] = 0);
 
@@ -407,7 +514,7 @@ function updateCharts(filteredOrders) {
                 if (!isNaN(d.getTime())) {
                     const m = d.toLocaleDateString([], { month: 'short' });
                     if (monthMap.hasOwnProperty(m)) {
-                        const net = (Number(o.amount) || 0) - (Number(o.discount_amount) || 0);
+                        const net = ((Number(o.amount) || 0) - (Number(o.discount_amount) || 0)) * multiplier;
                         monthMap[m] += net;
                     }
                 }
@@ -431,7 +538,7 @@ function updateCharts(filteredOrders) {
         filteredOrders.forEach(o => {
             const idx = (o.product_id || 0) % destNames.length;
             const dest = destNames[idx];
-            const net = (Number(o.amount) || 0) - (Number(o.discount_amount) || 0);
+            const net = ((Number(o.amount) || 0) - (Number(o.discount_amount) || 0)) * multiplier;
             destSalesMap[dest] += net;
         });
     }
@@ -448,7 +555,8 @@ function updateCharts(filteredOrders) {
     if (filteredOrders && filteredOrders.length > 0) {
         filteredOrders.forEach((o, i) => {
             const reg = regionNames[i % regionNames.length];
-            regionMap[reg] += 1;
+            const net = ((Number(o.amount) || 0) - (Number(o.discount_amount) || 0)) * multiplier;
+            regionMap[reg] += net;
         });
     }
 
@@ -466,7 +574,7 @@ function updateCharts(filteredOrders) {
                 const d = new Date(o.order_date_time);
                 if (!isNaN(d.getTime())) {
                     const dayIdx = (d.getDay() + 6) % 7;
-                    const net = (Number(o.amount) || 0) - (Number(o.discount_amount) || 0);
+                    const net = ((Number(o.amount) || 0) - (Number(o.discount_amount) || 0)) * multiplier;
                     dailyValues[dayIdx] += net;
                 }
             }
@@ -528,7 +636,7 @@ function renderTopPerformanceSections(filteredOrders) {
                 <div class="performance-item">
                     <div>
                         <div class="performance-title">${escapeHtml(item.region)}</div>
-                        <div style="font-size: 12.5px; color: var(--accent-emerald); font-weight: 800;">$${item.sales.toLocaleString()}</div>
+                        <div style="font-size: 12.5px; color: var(--accent-emerald); font-weight: 800;">${formatRupees(item.sales)}</div>
                     </div>
                     <span class="trend-badge trend-up">${item.growth} Growth</span>
                 </div>
@@ -605,9 +713,9 @@ function renderOrdersTable() {
                 <td><strong>#${o.order_no}</strong></td>
                 <td><span style="color: var(--primary); font-weight: 600;">User #${o.user_id}</span></td>
                 <td>PRD-${o.product_id}</td>
-                <td>$${gross.toFixed(2)}</td>
-                <td style="color: var(--accent-rose);">${discount > 0 ? '-$' + discount.toFixed(2) : '$0.00'}</td>
-                <td><strong style="color: var(--accent-emerald);">$${net.toFixed(2)}</strong></td>
+                <td>${formatRupees(gross)}</td>
+                <td style="color: var(--accent-rose);">${discount > 0 ? '-' + formatRupees(discount) : formatRupees(0)}</td>
+                <td><strong style="color: var(--accent-emerald);">${formatRupees(net)}</strong></td>
             </tr>
         `;
     }).join('');

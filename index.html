@@ -66,6 +66,11 @@
 
                 <span class="menu-category-label">Management</span>
                 
+                <a class="nav-link" onclick="openModal('apiKeyModal')">
+                    <i class="bi bi-key-fill text-amber"></i>
+                    <span>FX API Key Setup</span>
+                </a>
+
                 <a class="nav-link" onclick="openModal('rlsModal')">
                     <i class="bi bi-shield-lock-fill text-amber"></i>
                     <span>SQL RLS Setup</span>
@@ -106,6 +111,13 @@
                         <span id="current-date-time">Loading clock...</span>
                     </div>
 
+                    <!-- Live FX Rate Badge -->
+                    <div class="fx-rate-badge" onclick="openModal('apiKeyModal')" title="Click to configure FX API Key">
+                        <i class="bi bi-currency-rupee text-amber"></i>
+                        <span id="fx-rate-text">1 USD = ₹83.95</span>
+                        <span class="pulse-dot-amber" id="fx-api-dot"></span>
+                    </div>
+
                     <!-- Supabase Connection Pill -->
                     <div id="connection-status" class="status-badge">
                         <span class="pulse-dot"></span> Supabase Active
@@ -127,7 +139,7 @@
                                 <div class="notification-icon icon-emerald"><i class="bi bi-check-circle-fill"></i></div>
                                 <div>
                                     <div style="font-size: 12.5px; font-weight: 700;">New Sale Completed</div>
-                                    <div style="font-size: 11px; color: var(--text-dim);">Order #1042 ($2,450.00)</div>
+                                    <div style="font-size: 11px; color: var(--text-dim);" id="notif-order-amount">Order #1042 (₹2,05,677.50)</div>
                                 </div>
                             </div>
                             <div class="notification-item">
@@ -209,7 +221,7 @@
                                 <span class="summary-card-title">Today's Sales</span>
                                 <div class="summary-card-icon icon-blue"><i class="bi bi-calendar-check-fill"></i></div>
                             </div>
-                            <div class="summary-card-value" id="card-today-sales">$0.00</div>
+                            <div class="summary-card-value" id="card-today-sales">₹0.00</div>
                             <div class="summary-card-footer">
                                 <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +14.2%</span>
                                 <span>Sum of Today</span>
@@ -220,9 +232,9 @@
                         <div class="summary-card">
                             <div class="summary-card-header">
                                 <span class="summary-card-title">Total Revenue</span>
-                                <div class="summary-card-icon icon-purple"><i class="bi bi-currency-dollar"></i></div>
+                                <div class="summary-card-icon icon-purple"><i class="bi bi-currency-rupee"></i></div>
                             </div>
-                            <div class="summary-card-value" id="card-monthly-sales">$431,100.16</div>
+                            <div class="summary-card-value" id="card-monthly-sales">₹3,61,90,858.43</div>
                             <div class="summary-card-footer">
                                 <span class="trend-badge trend-up"><i class="bi bi-graph-up-arrow"></i> +28.4%</span>
                                 <span>Net Total Revenue</span>
@@ -248,7 +260,7 @@
                                 <span class="summary-card-title">Avg Order Value</span>
                                 <div class="summary-card-icon icon-amber"><i class="bi bi-calculator-fill"></i></div>
                             </div>
-                            <div class="summary-card-value" id="rev-aov">$1,672.69</div>
+                            <div class="summary-card-value" id="rev-aov">₹1,40,422.32</div>
                             <div class="summary-card-footer">
                                 <span class="trend-badge trend-neutral"><i class="bi bi-dash"></i> Mean</span>
                                 <span>Revenue / Orders</span>
@@ -480,6 +492,42 @@ CREATE POLICY "Allow public destinations" ON public.destinations_rows FOR SELECT
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('rlsModal')">Close</button>
                 <button type="button" class="btn btn-primary" onclick="copyRlsSQL()"><i class="bi bi-clipboard"></i> Copy SQL Fix</button>
+            </div>
+        </div>
+    <!-- Modal: Exchange Rate & API Key Configuration -->
+    <div id="apiKeyModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="bi bi-key-fill text-amber me-2"></i> FX API Key & Currency Engine</h3>
+                <button class="modal-close" onclick="closeModal('apiKeyModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+                    Retrieve accurate real-time currency conversion rates (USD to INR) using your Exchange Rate API Key.
+                </p>
+                <div style="margin-bottom: 16px;">
+                    <label style="font-size: 12px; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 6px;">Exchange Rate API Key</label>
+                    <input type="text" id="api-key-input" placeholder="e.g. 5a1b2c3d4e5f6g7h..." style="width: 100%; padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); font-family: monospace; font-size: 13px;">
+                    <div style="font-size: 11px; color: var(--text-dim); margin-top: 5px;">
+                        Supported APIs: <a href="https://www.exchangerate-api.com/" target="_blank" style="color: var(--primary);">ExchangeRate-API</a>, CurrencyAPI, or Open Rates.
+                    </div>
+                </div>
+                <div style="background: var(--bg-input); padding: 14px 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 16px;">
+                    <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Current Live FX Rate</div>
+                    <div style="font-size: 20px; font-weight: 800; color: var(--accent-emerald);" id="modal-fx-rate-display">1 USD = ₹83.9500 INR</div>
+                    <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;" id="modal-fx-last-updated">Last Updated: Real-Time Engine Active</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; background: rgba(139, 92, 246, 0.08); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid rgba(139, 92, 246, 0.2);">
+                    <input type="checkbox" id="convert-usd-checkbox" checked onchange="toggleUsdConversion(this.checked)" style="width: 16px; height: 16px; cursor: pointer;">
+                    <label for="convert-usd-checkbox" style="font-size: 12.5px; font-weight: 600; color: var(--text-main); cursor: pointer;">
+                        Automatically convert baseline values from USD to INR using live rate
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('apiKeyModal')">Close</button>
+                <button type="button" class="btn btn-secondary" onclick="fetchLiveExchangeRate(true)"><i class="bi bi-arrow-repeat"></i> Fetch Live Rate</button>
+                <button type="button" class="btn btn-primary" onclick="saveApiKeyFromModal()"><i class="bi bi-check-circle-fill"></i> Save API Key</button>
             </div>
         </div>
     </div>
