@@ -2,16 +2,21 @@
    Soni's Sales Analytics Dashboard - Application Core Engine
    ======================================================== */
 
-// Supabase REST Credentials
-const SUPABASE_URL = 'https://viygsuifghscibcmfkqh.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpeWdzdWlmZ2hzY2liY21ma3FoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0NzgyMDAsImV4cCI6MjA5OTA1NDIwMH0.yiJn50e6MxBz51N3AafBXqTKWPGSwikOBOCWhOkjiDg';
+// Real Supabase Production REST Credentials
+const SUPABASE_URL = 'https://hxtowatfbxckcaswfwzk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4dG93YXRmYnhja2Nhc3dmd3prIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4MjY2OTEsImV4cCI6MjA5OTQwMjY5MX0.4I5-TbOEPMctAiMLAKRrwfVr3XvhRtMTBnZ-TAt6zJk';
 
 let supabaseClient = null;
 
-// Raw API State Data
+// Raw Production API State Data & Lookup Maps
 let usersData = [];
 let ordersData = [];
+let productsData = [];
 let destinationsData = [];
+
+let userMap = new Map();
+let prodMap = new Map();
+let destMap = new Map();
 
 // Default Filter Options
 const DEFAULT_DESTINATIONS = [
@@ -330,38 +335,61 @@ function initSupabase() {
     }
 }
 
-// Fetch data directly from Supabase REST API tables
+// Fetch all pages directly from Supabase REST API tables
+async function fetchFromSupabase(table) {
+    const pageSize = 1000;
+    let offset = 0;
+    let allRows = [];
+    let hasMore = true;
+    const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY };
+
+    while (hasMore) {
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*&offset=${offset}&limit=${pageSize}`, { headers });
+            if (!res.ok) break;
+            const data = await res.json();
+            if (!Array.isArray(data)) break;
+            allRows = allRows.concat(data);
+            if (data.length < pageSize) {
+                hasMore = false;
+            } else {
+                offset += pageSize;
+            }
+        } catch (e) {
+            console.error(`Fetch error for ${table}:`, e);
+            break;
+        }
+    }
+    return allRows;
+}
+
 async function fetchSupabaseData() {
     let rlsNotice = false;
 
     try {
-        if (supabaseClient) {
-            const { data: uData } = await supabaseClient.from('users_rows').select('*').range(0, 5000);
-            if (uData && uData.length > 0) usersData = uData;
+        const [oRes, uRes, pRes, dRes] = await Promise.all([
+            fetchFromSupabase('orders'),
+            fetchFromSupabase('users'),
+            fetchFromSupabase('products'),
+            fetchFromSupabase('destinations')
+        ]);
 
-            const { data: oData } = await supabaseClient.from('orders_rows').select('*').range(0, 5000);
-            if (oData && oData.length > 0) ordersData = oData;
-
-            const { data: dData } = await supabaseClient.from('destinations_rows').select('*').range(0, 5000);
-            if (dData && dData.length > 0) destinationsData = dData;
-        }
-
-        // Direct REST API Fallback if client is missing or returned no data
-        if (!ordersData || ordersData.length === 0) {
-            const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY };
-            
-            const [uRes, oRes, dRes] = await Promise.all([
-                fetch(`${SUPABASE_URL}/rest/v1/users_rows?select=*&limit=5000`, { headers }).then(r => r.ok ? r.json() : []),
-                fetch(`${SUPABASE_URL}/rest/v1/orders_rows?select=*&limit=5000`, { headers }).then(r => r.ok ? r.json() : []),
-                fetch(`${SUPABASE_URL}/rest/v1/destinations_rows?select=*&limit=5000`, { headers }).then(r => r.ok ? r.json() : [])
-            ]);
-
-            if (uRes && uRes.length > 0) usersData = uRes;
-            if (oRes && oRes.length > 0) ordersData = oRes;
-            if (dRes && dRes.length > 0) destinationsData = dRes;
-        }
+        if (oRes && oRes.length > 0) ordersData = oRes;
+        if (uRes && uRes.length > 0) usersData = uRes;
+        if (pRes && pRes.length > 0) productsData = pRes;
+        if (dRes && dRes.length > 0) destinationsData = dRes;
 
         if (ordersData.length === 0) rlsNotice = true;
+
+        // Build fast lookup maps
+        userMap.clear();
+        usersData.forEach(u => userMap.set(String(u.user_id), u));
+
+        prodMap.clear();
+        productsData.forEach(p => prodMap.set(String(p.prod_id), p));
+
+        destMap.clear();
+        destinationsData.forEach(d => destMap.set(String(d.destination_id), d));
 
         const banner = document.getElementById('rls-banner');
         if (banner) banner.style.display = rlsNotice ? 'flex' : 'none';
@@ -375,26 +403,34 @@ async function fetchSupabaseData() {
 
 // Destination Lookup Helper
 function getDestinationInfo(productId) {
-    if (!destinationsData || destinationsData.length === 0) {
-        return { name: `Destination #${productId}`, region: 'Single Country' };
-    }
-
-    const pStr = String(productId);
-    const exact = destinationsData.find(d => String(d.destination_id || d.id) === pStr);
-    if (exact) {
-        const rType = exact.destination_type !== undefined ? exact.destination_type : exact.type;
-        return { 
-            name: exact.destination_name || exact.name || `Destination #${productId}`,
-            region: REGION_TYPE_MAP[rType] || rType || 'Single Country'
+    const p = prodMap.get(String(productId));
+    if (p && p.coverageDestinations) {
+        const destCode = p.coverageDestinations.split(',')[0].trim();
+        const d = destMap.get(destCode);
+        const name = d ? (d.destination_name || d.name) : destCode;
+        const rType = d ? (d.destination_type !== undefined ? d.destination_type : d.type) : 1;
+        return {
+            name: name || `Destination #${productId}`,
+            region: REGION_TYPE_MAP[rType] || rType || 'Single Country',
+            productName: p.productName || p.addOnId || `Product #${productId}`
         };
     }
 
-    const idx = (Number(productId) || 0) % destinationsData.length;
-    const item = destinationsData[idx];
-    const rType = item.destination_type !== undefined ? item.destination_type : item.type;
+    if (destinationsData.length > 0) {
+        const idx = (Number(productId) || 0) % destinationsData.length;
+        const d = destinationsData[idx];
+        const rType = d.destination_type !== undefined ? d.destination_type : d.type;
+        return {
+            name: d.destination_name || d.name || `Destination #${productId}`,
+            region: REGION_TYPE_MAP[rType] || rType || 'Single Country',
+            productName: p ? (p.productName || p.addOnId) : `Product #${productId}`
+        };
+    }
+
     return {
-        name: item.destination_name || item.name || `Destination #${productId}`,
-        region: REGION_TYPE_MAP[rType] || rType || 'Single Country'
+        name: `Destination #${productId}`,
+        region: 'Single Country',
+        productName: p ? (p.productName || p.addOnId) : `Product #${productId}`
     };
 }
 
@@ -781,12 +817,15 @@ function renderOrdersTable() {
         const gross = Number(o.amount) || 0;
         const discount = Number(o.discount_amount) || 0;
         const net = gross - discount;
+        const u = userMap.get(String(o.user_id));
+        const custName = u ? u.name : `User #${o.user_id}`;
+        const destInfo = getDestinationInfo(o.product_id);
 
         return `
             <tr>
                 <td><strong>#${o.order_no}</strong></td>
-                <td><span style="color: var(--primary); font-weight: 600;">User #${o.user_id}</span></td>
-                <td>PRD-${o.product_id}</td>
+                <td><span style="color: var(--primary); font-weight: 600;">${escapeHtml(custName)}</span></td>
+                <td><span style="font-size: 12px; color: var(--text-muted);">${escapeHtml(destInfo.name)}</span></td>
                 <td>${formatRupees(gross)}</td>
                 <td style="color: var(--accent-rose);">${discount > 0 ? '-' + formatRupees(discount) : formatRupees(0)}</td>
                 <td><strong style="color: var(--accent-emerald);">${formatRupees(net)}</strong></td>
