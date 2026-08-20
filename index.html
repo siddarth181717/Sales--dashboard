@@ -481,13 +481,17 @@
                 <p style="font-size: 13px; color: var(--text-muted);">
                     Copy and execute this script in your <a href="https://supabase.com/dashboard" target="_blank" style="color: var(--primary); font-weight: 600;">Supabase SQL Editor</a> to enable public API access for your 3 tables:
                 </p>
-                <div class="sql-box" id="sql-code">ALTER TABLE IF EXISTS public.users_rows DISABLE ROW LEVEL SECURITY;
+                <div class="sql-box" id="sql-code">-- Step 1: Disable RLS for all 4 dashboard tables (Allows immediate public read access)
+ALTER TABLE IF EXISTS public.users_rows DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.orders_rows DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.products_rows DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.destinations_rows DISABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public users" ON public.users_rows FOR SELECT USING (true);
-CREATE POLICY "Allow public orders" ON public.orders_rows FOR SELECT USING (true);
-CREATE POLICY "Allow public destinations" ON public.destinations_rows FOR SELECT USING (true);</div>
+-- Step 2: Drop old duplicate policies to avoid Error 42710
+DROP POLICY IF EXISTS "Allow public users" ON public.users_rows;
+DROP POLICY IF EXISTS "Allow public orders" ON public.orders_rows;
+DROP POLICY IF EXISTS "Allow public products" ON public.products_rows;
+DROP POLICY IF EXISTS "Allow public destinations" ON public.destinations_rows;</div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('rlsModal')">Close</button>
