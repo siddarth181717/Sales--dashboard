@@ -368,10 +368,10 @@ async function fetchSupabaseData() {
 
     try {
         const [oRes, uRes, pRes, dRes] = await Promise.all([
-            fetchFromSupabase('orders'),
-            fetchFromSupabase('users'),
-            fetchFromSupabase('products'),
-            fetchFromSupabase('destinations')
+            fetchFromSupabase('orders_rows'),
+            fetchFromSupabase('users_rows'),
+            fetchFromSupabase('products_rows'),
+            fetchFromSupabase('destinations_rows')
         ]);
 
         if (oRes && oRes.length > 0) ordersData = oRes;
