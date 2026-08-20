@@ -3,8 +3,8 @@
    ======================================================== */
 
 // Real Supabase Production REST Credentials
-const SUPABASE_URL = 'https://viygsuifghscibcmfkqh.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpeWdzdWlmZ2hzY2libWNtZmtxaCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzgzNDc4MjAwLCJleHAiOjIwOTkwNTQyMDB9.yiJn50e6MxBz51N3AafBXqTKWPGSwikOBOCWhOkjiDg';
+const SUPABASE_URL = 'https://hxtowatfbxckcaswfwzk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4dG93YXRmYnhja2Nhc3dmd3prIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4MjY2OTEsImV4cCI6MjA5OTQwMjY5MX0.4I5-TbOEPMctAiMLAKRrwfVr3XvhRtMTBnZ-TAt6zJk';
 
 let supabaseClient = null;
 
@@ -368,10 +368,10 @@ async function fetchSupabaseData() {
 
     try {
         const [oRes, uRes, pRes, dRes] = await Promise.all([
-            fetchFromSupabase('orders_rows'),
-            fetchFromSupabase('users_rows'),
-            fetchFromSupabase('products_rows'),
-            fetchFromSupabase('destinations_rows')
+            fetchFromSupabase('orders'),
+            fetchFromSupabase('users'),
+            fetchFromSupabase('products'),
+            fetchFromSupabase('destinations')
         ]);
 
         if (oRes && oRes.length > 0) ordersData = oRes;
