@@ -66,11 +66,6 @@
 
                 <span class="menu-category-label">Management</span>
                 
-                <a class="nav-link" onclick="openModal('apiKeyModal')">
-                    <i class="bi bi-key-fill text-amber"></i>
-                    <span>FX API Key Setup</span>
-                </a>
-
                 <a class="nav-link" onclick="openModal('rlsModal')">
                     <i class="bi bi-shield-lock-fill text-amber"></i>
                     <span>SQL RLS Setup</span>
@@ -105,19 +100,6 @@
                 </div>
 
                 <div class="navbar-right">
-                    <!-- Live Clock Badge -->
-                    <div class="date-time-badge">
-                        <i class="bi bi-clock-history"></i>
-                        <span id="current-date-time">Loading clock...</span>
-                    </div>
-
-                    <!-- Live FX Rate Badge -->
-                    <div class="fx-rate-badge" onclick="openModal('apiKeyModal')" title="Click to configure FX API Key">
-                        <i class="bi bi-currency-rupee text-amber"></i>
-                        <span id="fx-rate-text">1 USD = ₹83.95</span>
-                        <span class="pulse-dot-amber" id="fx-api-dot"></span>
-                    </div>
-
                     <!-- Supabase Connection Pill -->
                     <div id="connection-status" class="status-badge">
                         <span class="pulse-dot"></span> Supabase Active
@@ -206,6 +188,10 @@
                         <select id="filter-region" class="select-filter">
                             <option value="ALL">All Regions</option>
                         </select>
+
+                        <button class="btn btn-primary" onclick="exportToCSV()" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-md); font-weight: 700; font-size: 13px; cursor: pointer; border: none; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff; box-shadow: var(--shadow-sm);">
+                            <i class="bi bi-file-earmark-spreadsheet-fill"></i> Export CSV
+                        </button>
                     </div>
                 </section>
 

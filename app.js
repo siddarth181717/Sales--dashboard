@@ -3,8 +3,8 @@
    ======================================================== */
 
 // Real Supabase Production REST Credentials
-const SUPABASE_URL = 'https://hxtowatfbxckcaswfwzk.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4dG93YXRmYnhja2Nhc3dmd3prIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4MjY2OTEsImV4cCI6MjA5OTQwMjY5MX0.4I5-TbOEPMctAiMLAKRrwfVr3XvhRtMTBnZ-TAt6zJk';
+const SUPABASE_URL = 'https://viygsuifghscibcmfkqh.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_E698piTQvRpvhPJR59AODw_0E5bzPvX';
 
 let supabaseClient = null;
 
@@ -373,10 +373,10 @@ async function fetchSupabaseData() {
 
     try {
         const [oRes, uRes, pRes, dRes] = await Promise.all([
-            fetchFromSupabase('orders'),
-            fetchFromSupabase('users'),
-            fetchFromSupabase('products'),
-            fetchFromSupabase('destinations')
+            fetchFromSupabase('orders_rows'),
+            fetchFromSupabase('users_rows'),
+            fetchFromSupabase('products_rows'),
+            fetchFromSupabase('destinations_rows')
         ]);
 
         if (oRes && oRes.length > 0) ordersData = oRes;
@@ -960,6 +960,31 @@ function nextDestinationsPage() { destinationsPage++; renderDestinationsTable();
 // Modal Controllers
 function openModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// Single Click CSV Export
+function exportToCSV() {
+    if (!ordersData || ordersData.length === 0) {
+        showToast('⚠️ No orders available to export', 'info');
+        return;
+    }
+    let csv = "Order No,User ID,Customer Name,Product,Amount,Discount,Net Revenue,Date\n";
+    ordersData.forEach(o => {
+        const u = userMap.get(String(o.user_id));
+        const p = prodMap.get(String(o.product_id));
+        const custName = u ? u.name.replace(/,/g, '') : `User #${o.user_id}`;
+        const prodName = p ? (p.productName || p.addOnId).replace(/,/g, '') : `Product #${o.product_id}`;
+        const net = getNetRevenue(o);
+        csv += `${o.order_no},${o.user_id},"${custName}","${prodName}",${o.amount || 0},${o.discount_amount || 0},${net},${o.order_date_time || ''}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'SoniSales_Analytics_Report.csv';
+    a.click();
+    showToast('⚡ Report Exported to CSV Successfully!', 'success');
+}
 
 function copyRlsSQL() {
     const code = document.getElementById('sql-code').innerText;
