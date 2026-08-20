@@ -59,8 +59,8 @@ const pageSize = 8;
 
 // Live Exchange Rate State & API Engine Config
 let fxApiKey = localStorage.getItem('soni_fx_api_key') || '';
-let currentFxRate = 83.95; // Default baseline USD to INR exchange rate
-let shouldConvertUsdToInr = localStorage.getItem('soni_convert_usd') !== 'false';
+let currentFxRate = 83.95; // Baseline USD to INR rate if user enables conversion
+let shouldConvertUsdToInr = localStorage.getItem('soni_convert_usd') === 'true'; // Default to false (display raw Supabase values directly)
 let fxLastUpdated = 'Real-Time Engine Active';
 
 // Initialize FX Engine
@@ -335,25 +335,30 @@ function initSupabase() {
     }
 }
 
-// Fetch all pages directly from Supabase REST API tables
+// Fetch all rows directly from Supabase REST API tables with Range pagination
 async function fetchFromSupabase(table) {
     const pageSize = 1000;
-    let offset = 0;
+    let start = 0;
     let allRows = [];
     let hasMore = true;
-    const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY };
 
     while (hasMore) {
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*&offset=${offset}&limit=${pageSize}`, { headers });
+            const end = start + pageSize - 1;
+            const headers = {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+                'Range': `${start}-${end}`
+            };
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*`, { headers });
             if (!res.ok) break;
             const data = await res.json();
-            if (!Array.isArray(data)) break;
+            if (!Array.isArray(data) || data.length === 0) break;
             allRows = allRows.concat(data);
             if (data.length < pageSize) {
                 hasMore = false;
             } else {
-                offset += pageSize;
+                start += pageSize;
             }
         } catch (e) {
             console.error(`Fetch error for ${table}:`, e);
@@ -482,44 +487,57 @@ function renderDashboard() {
     renderDataTables();
 }
 
-// Filtered Orders Logic
-function getFilteredOrders() {
-    let maxOrderTime = 0;
-    ordersData.forEach(o => {
-        if (o.order_date_time) {
-            const t = new Date(o.order_date_time).getTime();
-            if (!isNaN(t) && t > maxOrderTime) maxOrderTime = t;
-        }
-    });
+// Net Revenue Helper
+function getNetRevenue(o) {
+    if (!o) return 0;
+    const amount = Number(o.amount || 0);
+    const discount = Number(o.discount_amount || 0);
+    return amount - discount;
+}
 
-    const refDate = maxOrderTime > 0 ? new Date(maxOrderTime) : new Date();
-    const refDateStr = refDate.toISOString().substring(0, 10);
-    const refMonthStr = refDate.toISOString().substring(0, 7);
+// Filtered Orders Calculation Engine
+function getFilteredOrders() {
+    const today = new Date();
+    const todayStr = today.toISOString().substring(0, 10);
+    const thisMonthStr = today.toISOString().substring(0, 7);
 
     return ordersData.filter(o => {
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
+            const u = userMap.get(String(o.user_id));
+            const p = prodMap.get(String(o.product_id));
+            const custName = u ? u.name.toLowerCase() : '';
+            const prodName = p ? (p.productName || p.addOnId || '').toLowerCase() : '';
+            const info = getDestinationInfo(o.product_id);
+
             const matchesQuery = String(o.order_no).toLowerCase().includes(q) ||
                                  String(o.user_id).toLowerCase().includes(q) ||
                                  String(o.product_id).toLowerCase().includes(q) ||
-                                 String(o.amount).toLowerCase().includes(q);
+                                 String(o.amount).toLowerCase().includes(q) ||
+                                 custName.includes(q) ||
+                                 prodName.includes(q) ||
+                                 info.name.toLowerCase().includes(q);
             if (!matchesQuery) return false;
         }
 
-        // Date Filter Logic
+        // Date Filter Logic relative to ACTUAL today's date
         if (filterDate === 'TODAY') {
-            if (o.order_date_time && !o.order_date_time.startsWith(refDateStr)) return false;
+            if (!o.order_date_time || o.order_date_time !== todayStr) return false;
         } else if (filterDate === 'MONTHLY') {
-            if (o.order_date_time && !o.order_date_time.startsWith(refMonthStr)) return false;
+            if (!o.order_date_time || !o.order_date_time.startsWith(thisMonthStr)) return false;
         } else if (filterDate === '7DAYS') {
             if (o.order_date_time) {
                 const t = new Date(o.order_date_time).getTime();
-                if (t < (refDate.getTime() - 7 * 86400000)) return false;
+                if (t < (today.getTime() - 7 * 86400000) || t > today.getTime()) return false;
+            } else {
+                return false;
             }
         } else if (filterDate === '30DAYS') {
             if (o.order_date_time) {
                 const t = new Date(o.order_date_time).getTime();
-                if (t < (refDate.getTime() - 30 * 86400000)) return false;
+                if (t < (today.getTime() - 30 * 86400000) || t > today.getTime()) return false;
+            } else {
+                return false;
             }
         }
 
@@ -550,21 +568,25 @@ function updateSummaryCards(filteredOrders) {
     });
     const refDateStr = maxOrderTime > 0 ? new Date(maxOrderTime).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10);
 
-    const todaySales = ordersData.filter(o => o.order_date_time && o.order_date_time.startsWith(refDateStr))
-                                  .reduce((acc, curr) => acc + (Number(curr.amount) || 0) - (Number(curr.discount_amount) || 0), 0);
+    const latestDayOrders = filteredOrders.filter(o => o.order_date_time === refDateStr);
+    const todaySales = latestDayOrders.reduce((acc, curr) => acc + getNetRevenue(curr), 0);
 
-    const grossRevenue = filteredOrders.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-    const totalDiscounts = filteredOrders.reduce((acc, curr) => acc + (Number(curr.discount_amount) || 0), 0);
-    const netRevenue = grossRevenue - totalDiscounts;
-
+    const netRevenue = filteredOrders.reduce((acc, curr) => acc + getNetRevenue(curr), 0);
     const totalOrders = filteredOrders.length;
-    const aov = totalOrders > 0 ? (netRevenue / totalOrders) : 0;
+    const aov = totalOrders > 0 ? Math.round(netRevenue / totalOrders) : 0;
 
-    // Dynamically calculate top destination from filteredOrders
+    // Active Customers (Distinct user_id)
+    const activeCustomers = new Set(filteredOrders.map(o => o.user_id)).size;
+
+    // Active Selling Days
+    const activeSellingDays = new Set(filteredOrders.map(o => o.order_date_time).filter(Boolean)).size;
+    const avgDailyRevenue = activeSellingDays > 0 ? Math.round(netRevenue / activeSellingDays) : netRevenue;
+
+    // Dynamically calculate top destination
     const destRevMap = {};
     filteredOrders.forEach(o => {
         const info = getDestinationInfo(o.product_id);
-        const net = (Number(o.amount) || 0) - (Number(o.discount_amount) || 0);
+        const net = getNetRevenue(o);
         destRevMap[info.name] = (destRevMap[info.name] || 0) + net;
     });
 
@@ -581,7 +603,7 @@ function updateSummaryCards(filteredOrders) {
     const regRevMap = {};
     filteredOrders.forEach(o => {
         const info = getDestinationInfo(o.product_id);
-        const net = (Number(o.amount) || 0) - (Number(o.discount_amount) || 0);
+        const net = getNetRevenue(o);
         regRevMap[info.region] = (regRevMap[info.region] || 0) + net;
     });
 
@@ -602,7 +624,21 @@ function updateSummaryCards(filteredOrders) {
     const topDestEl = document.getElementById('card-top-destination');
     const topRegionEl = document.getElementById('card-top-region');
 
-    if (todayEl) todayEl.textContent = formatRupees(todaySales);
+    if (todayEl) {
+        todayEl.textContent = formatRupees(todaySales);
+        const cardTitleEl = todayEl.closest('.summary-card')?.querySelector('.summary-card-title');
+        const cardSubtextEl = todayEl.closest('.summary-card')?.querySelector('.summary-card-footer span:last-child');
+        const actualToday = new Date().toISOString().substring(0, 10);
+        if (refDateStr !== actualToday && maxOrderTime > 0) {
+            const formattedDate = new Date(maxOrderTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            if (cardTitleEl) cardTitleEl.textContent = 'Latest Active Day';
+            if (cardSubtextEl) cardSubtextEl.textContent = `${latestDayOrders.length} Orders (${formattedDate})`;
+        } else {
+            if (cardTitleEl) cardTitleEl.textContent = "Today's Sales";
+            if (cardSubtextEl) cardSubtextEl.textContent = `${latestDayOrders.length} Orders Today`;
+        }
+    }
+
     if (monthlyEl) monthlyEl.textContent = formatRupees(netRevenue);
     if (totalOrdersEl) totalOrdersEl.textContent = totalOrders.toLocaleString();
     if (aovEl) aovEl.textContent = formatRupees(aov);
@@ -648,8 +684,8 @@ function updateCharts(filteredOrders) {
     }
 
     const sortedDests = Object.entries(destSalesMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
-    const destLabels = sortedDests.length > 0 ? sortedDests.map(d => d[0]) : ['Tokyo', 'Paris', 'New York', 'Swiss Alps', 'Dubai', 'Sydney'];
-    const destValues = sortedDests.length > 0 ? sortedDests.map(d => d[1]) : [142500, 128400, 115200, 98600, 89100, 76400];
+    const destLabels = sortedDests.map(d => d[0]);
+    const destValues = sortedDests.map(d => d[1]);
 
     if (typeof renderBarChart === 'function') {
         renderBarChart(destLabels, destValues);
@@ -884,6 +920,7 @@ function setupEventListeners() {
 
     const dateFilter = document.getElementById('filter-date');
     if (dateFilter) {
+        dateFilter.value = filterDate; // Sync dropdown value with JS filter state ('ALL')
         dateFilter.addEventListener('change', (e) => {
             filterDate = e.target.value;
             showToast(`Date Filter: ${dateFilter.options[dateFilter.selectedIndex].text}`, 'info');

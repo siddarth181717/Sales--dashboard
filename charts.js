@@ -29,11 +29,8 @@ function renderLineChart(labels, values) {
     if (lineChartInstance) lineChartInstance.destroy();
     const colors = getTooltipColors();
 
-    const defaultTimeline = ['Aug 6 09:00 AM', 'Aug 6 11:00 AM', 'Aug 6 01:00 PM', 'Aug 6 03:15 PM', 'Aug 6 05:00 PM', 'Aug 6 07:00 PM', 'Aug 6 09:00 PM'];
-    const defaultRevenues = [405000, 415000, 422000, 431100, 438000, 445000, 455000];
-
-    const chartLabels = (labels && labels.length >= 2) ? labels : defaultTimeline;
-    const chartValues = (values && values.length >= 2) ? values : defaultRevenues;
+    const chartLabels = labels || [];
+    const chartValues = values || [];
 
     const grad = ctx.getContext('2d').createLinearGradient(0, 0, 0, 280);
     grad.addColorStop(0, 'rgba(139, 92, 246, 0.4)');
@@ -95,8 +92,8 @@ function renderDoughnutChart(labels, values) {
     if (doughnutChartInstance) doughnutChartInstance.destroy();
     const colors = getTooltipColors();
 
-    const chartLabels = (labels && labels.length > 0) ? labels : ['General', 'Metropolitan', 'Cultural', 'Nature'];
-    const chartValues = (values && values.length > 0) ? values : [431100.16, 215000, 185000, 120000];
+    const chartLabels = labels || [];
+    const chartValues = values || [];
 
     doughnutChartInstance = new Chart(ctx, {
         type: 'doughnut',
@@ -139,8 +136,8 @@ function renderBarChart(labels, values) {
     if (barChartInstance) barChartInstance.destroy();
     const colors = getTooltipColors();
 
-    const cleanLabels = (labels && labels.length > 0) ? labels.slice(0, 6) : ['Tokyo', 'New York', 'Dubai', 'Paris', 'Sydney', 'Swiss Alps'];
-    const cleanValues = (values && values.length > 0) ? values.slice(0, 6) : [142500, 128400, 115200, 98600, 89100, 76400];
+    const cleanLabels = (labels && labels.length > 0) ? labels.slice(0, 6) : [];
+    const cleanValues = (values && values.length > 0) ? values.slice(0, 6) : [];
 
     barChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -183,22 +180,17 @@ function renderAreaChart(labels, values) {
     if (!ctx) return;
 
     if (areaChartInstance) areaChartInstance.destroy();
-    const colors = getTooltipColors();
-
     const grad = ctx.getContext('2d').createLinearGradient(0, 0, 0, 260);
     grad.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
     grad.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
 
-    const defaultDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const defaultDaily = [14200, 18500, 22100, 19800, 28400, 34000, 29500];
-
     areaChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: labels && labels.length > 0 ? labels : defaultDays,
+            labels: labels || [],
             datasets: [{
                 label: 'Daily Sales (₹)',
-                data: values && values.length > 0 ? values : defaultDaily,
+                data: values || [],
                 borderColor: '#10b981',
                 borderWidth: 3.5,
                 backgroundColor: grad,

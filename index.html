@@ -192,10 +192,10 @@
 
                     <div class="filter-group">
                         <select id="filter-date" class="select-filter">
-                            <option value="ALL">All Time</option>
-                            <option value="TODAY">Today's Sales</option>
+                            <option value="ALL" selected>All Time (Full Range)</option>
+                            <option value="TODAY">Latest Single Day</option>
                             <option value="7DAYS">Last 7 Days</option>
-                            <option value="MONTHLY">This Month</option>
+                            <option value="MONTHLY">Latest Month</option>
                             <option value="30DAYS">Last 30 Days</option>
                         </select>
 
@@ -215,16 +215,16 @@
                 <section id="tab-overview" class="tab-page">
                     <!-- Summary KPI Cards Grid -->
                     <div class="summary-cards-grid">
-                        <!-- Card 1: Today's Sales -->
+                        <!-- Card 1: Latest Day Sales -->
                         <div class="summary-card">
                             <div class="summary-card-header">
-                                <span class="summary-card-title">Today's Sales</span>
+                                <span class="summary-card-title">Latest Day Sales</span>
                                 <div class="summary-card-icon icon-blue"><i class="bi bi-calendar-check-fill"></i></div>
                             </div>
                             <div class="summary-card-value" id="card-today-sales">₹0.00</div>
                             <div class="summary-card-footer">
-                                <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +14.2%</span>
-                                <span>Sum of Today</span>
+                                <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> Active</span>
+                                <span>Last Record Date</span>
                             </div>
                         </div>
 
@@ -234,7 +234,7 @@
                                 <span class="summary-card-title">Total Revenue</span>
                                 <div class="summary-card-icon icon-purple"><i class="bi bi-currency-rupee"></i></div>
                             </div>
-                            <div class="summary-card-value" id="card-monthly-sales">₹3,61,90,858.43</div>
+                            <div class="summary-card-value" id="card-monthly-sales">₹0.00</div>
                             <div class="summary-card-footer">
                                 <span class="trend-badge trend-up"><i class="bi bi-graph-up-arrow"></i> +28.4%</span>
                                 <span>Net Total Revenue</span>
@@ -247,7 +247,7 @@
                                 <span class="summary-card-title">Total Orders</span>
                                 <div class="summary-card-icon icon-cyan"><i class="bi bi-bag-check-fill"></i></div>
                             </div>
-                            <div class="summary-card-value" id="card-total-orders">162</div>
+                            <div class="summary-card-value" id="card-total-orders">0</div>
                             <div class="summary-card-footer">
                                 <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +8.1%</span>
                                 <span>Total Volume</span>
@@ -260,7 +260,7 @@
                                 <span class="summary-card-title">Avg Order Value</span>
                                 <div class="summary-card-icon icon-amber"><i class="bi bi-calculator-fill"></i></div>
                             </div>
-                            <div class="summary-card-value" id="rev-aov">₹1,40,422.32</div>
+                            <div class="summary-card-value" id="rev-aov">₹0.00</div>
                             <div class="summary-card-footer">
                                 <span class="trend-badge trend-neutral"><i class="bi bi-dash"></i> Mean</span>
                                 <span>Revenue / Orders</span>
@@ -481,17 +481,23 @@
                 <p style="font-size: 13px; color: var(--text-muted);">
                     Copy and execute this script in your <a href="https://supabase.com/dashboard" target="_blank" style="color: var(--primary); font-weight: 600;">Supabase SQL Editor</a> to enable public API access for your 3 tables:
                 </p>
-                <div class="sql-box" id="sql-code">-- Step 1: Disable RLS for all 4 dashboard tables
-ALTER TABLE IF EXISTS public.users DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.orders DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.products DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.destinations DISABLE ROW LEVEL SECURITY;
+                <div class="sql-box" id="sql-code">-- Step 1: Enable RLS on all 4 tables
+ALTER TABLE IF EXISTS public.orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.destinations ENABLE ROW LEVEL SECURITY;
 
--- Step 2: Drop old duplicate policies
-DROP POLICY IF EXISTS "Allow public users" ON public.users;
-DROP POLICY IF EXISTS "Allow public orders" ON public.orders;
-DROP POLICY IF EXISTS "Allow public products" ON public.products;
-DROP POLICY IF EXISTS "Allow public destinations" ON public.destinations;</div>
+-- Step 2: Drop old duplicate policies if any exist
+DROP POLICY IF EXISTS "Allow public read access" ON public.orders;
+DROP POLICY IF EXISTS "Allow public read access" ON public.users;
+DROP POLICY IF EXISTS "Allow public read access" ON public.products;
+DROP POLICY IF EXISTS "Allow public read access" ON public.destinations;
+
+-- Step 3: Create SELECT policies for anon/public read access
+CREATE POLICY "Allow public read access" ON public.orders FOR SELECT USING (true);
+CREATE POLICY "Allow public read access" ON public.users FOR SELECT USING (true);
+CREATE POLICY "Allow public read access" ON public.products FOR SELECT USING (true);
+CREATE POLICY "Allow public read access" ON public.destinations FOR SELECT USING (true);</div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('rlsModal')">Close</button>
