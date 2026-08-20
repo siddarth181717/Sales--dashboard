@@ -559,6 +559,8 @@ function getFilteredOrders() {
 
 // Update Summary KPI Cards
 function updateSummaryCards(filteredOrders) {
+    const scopeOrders = (filteredOrders && filteredOrders.length > 0) ? filteredOrders : ordersData;
+
     let maxOrderTime = 0;
     ordersData.forEach(o => {
         if (o.order_date_time) {
@@ -568,23 +570,23 @@ function updateSummaryCards(filteredOrders) {
     });
     const refDateStr = maxOrderTime > 0 ? new Date(maxOrderTime).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10);
 
-    const latestDayOrders = filteredOrders.filter(o => o.order_date_time === refDateStr);
+    const latestDayOrders = ordersData.filter(o => o.order_date_time === refDateStr);
     const todaySales = latestDayOrders.reduce((acc, curr) => acc + getNetRevenue(curr), 0);
 
-    const netRevenue = filteredOrders.reduce((acc, curr) => acc + getNetRevenue(curr), 0);
-    const totalOrders = filteredOrders.length;
+    const netRevenue = scopeOrders.reduce((acc, curr) => acc + getNetRevenue(curr), 0);
+    const totalOrders = scopeOrders.length;
     const aov = totalOrders > 0 ? Math.round(netRevenue / totalOrders) : 0;
 
     // Active Customers (Distinct user_id)
-    const activeCustomers = new Set(filteredOrders.map(o => o.user_id)).size;
+    const activeCustomers = new Set(scopeOrders.map(o => o.user_id)).size;
 
     // Active Selling Days
-    const activeSellingDays = new Set(filteredOrders.map(o => o.order_date_time).filter(Boolean)).size;
+    const activeSellingDays = new Set(scopeOrders.map(o => o.order_date_time).filter(Boolean)).size;
     const avgDailyRevenue = activeSellingDays > 0 ? Math.round(netRevenue / activeSellingDays) : netRevenue;
 
     // Dynamically calculate top destination
     const destRevMap = {};
-    filteredOrders.forEach(o => {
+    scopeOrders.forEach(o => {
         const info = getDestinationInfo(o.product_id);
         const net = getNetRevenue(o);
         destRevMap[info.name] = (destRevMap[info.name] || 0) + net;
@@ -601,7 +603,7 @@ function updateSummaryCards(filteredOrders) {
 
     // Dynamically calculate top region
     const regRevMap = {};
-    filteredOrders.forEach(o => {
+    scopeOrders.forEach(o => {
         const info = getDestinationInfo(o.product_id);
         const net = getNetRevenue(o);
         regRevMap[info.region] = (regRevMap[info.region] || 0) + net;
@@ -634,7 +636,7 @@ function updateSummaryCards(filteredOrders) {
             if (cardTitleEl) cardTitleEl.textContent = 'Latest Active Day';
             if (cardSubtextEl) cardSubtextEl.textContent = `${latestDayOrders.length} Orders (${formattedDate})`;
         } else {
-            if (cardTitleEl) cardTitleEl.textContent = "Today's Sales";
+            if (cardTitleEl) cardTitleEl.textContent = "Today's Performance";
             if (cardSubtextEl) cardSubtextEl.textContent = `${latestDayOrders.length} Orders Today`;
         }
     }
