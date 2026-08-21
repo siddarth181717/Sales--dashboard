@@ -73,12 +73,12 @@ function renderLineChart(labels, values) {
                     bodyFont: { weight: 'bold', size: 13 },
                     padding: 14,
                     displayColors: false,
-                    callbacks: { label: ctx => ` Revenue: ₹${Number(ctx.parsed.y).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` }
+                    callbacks: { label: ctx => ` Revenue: ${typeof formatCurrency === 'function' ? formatCurrency(ctx.parsed.y) : '$' + ctx.parsed.y}` }
                 }
             },
             scales: {
                 x: { grid: { color: colors.gridColor }, ticks: { color: colors.textMuted, font: { size: 11.5, weight: '700' } } },
-                y: { grid: { color: colors.gridColor }, ticks: { color: colors.textMuted, font: { size: 11.5 }, callback: v => '₹' + Number(v).toLocaleString('en-IN') } }
+                y: { grid: { color: colors.gridColor }, ticks: { color: colors.textMuted, font: { size: 11.5 }, callback: v => typeof formatCurrency === 'function' ? formatCurrency(v) : '$' + v } }
             }
         }
     });
@@ -101,7 +101,7 @@ function renderDoughnutChart(labels, values) {
             labels: chartLabels,
             datasets: [{
                 data: chartValues,
-                backgroundColor: ['#8b5cf6', '#06b6d4', '#10b981', '#f43f5e'],
+                backgroundColor: ['#8b5cf6', '#06b6d4', '#10b981', '#f43f5e', '#f59e0b', '#ec4899', '#3b82f6'],
                 borderWidth: 0,
                 hoverOffset: 8
             }]
@@ -120,7 +120,7 @@ function renderDoughnutChart(labels, values) {
                     bodyColor: colors.body,
                     bodyFont: { weight: 'bold', size: 13 },
                     padding: 14,
-                    callbacks: { label: ctx => ` ${ctx.label}: ₹${Number(ctx.parsed).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` }
+                    callbacks: { label: ctx => ` ${ctx.label}: ${typeof formatCurrency === 'function' ? formatCurrency(ctx.parsed) : '$' + ctx.parsed}` }
                 }
             },
             cutout: '74%'
@@ -144,7 +144,7 @@ function renderBarChart(labels, values) {
         data: {
             labels: cleanLabels,
             datasets: [{
-                label: 'Sales Amount (₹)',
+                label: 'Sales Amount',
                 data: cleanValues,
                 backgroundColor: ['#8b5cf6', '#06b6d4', '#10b981', '#d946ef', '#f59e0b', '#f43f5e'],
                 borderRadius: 10,
@@ -163,12 +163,12 @@ function renderBarChart(labels, values) {
                     titleColor: colors.title,
                     bodyColor: colors.body,
                     padding: 14,
-                    callbacks: { label: ctx => ` Sales: ₹${Number(ctx.parsed.y).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` }
+                    callbacks: { label: ctx => ` Sales: ${typeof formatCurrency === 'function' ? formatCurrency(ctx.parsed.y) : '$' + ctx.parsed.y}` }
                 }
             },
             scales: {
                 x: { grid: { display: false }, ticks: { color: colors.textMuted, font: { size: 11.5, weight: '700' } } },
-                y: { grid: { color: colors.gridColor }, ticks: { color: colors.textMuted, font: { size: 11.5 }, callback: v => '₹' + Number(v).toLocaleString('en-IN') } }
+                y: { grid: { color: colors.gridColor }, ticks: { color: colors.textMuted, font: { size: 11.5 }, callback: v => typeof formatCurrency === 'function' ? formatCurrency(v) : '$' + v } }
             }
         }
     });
@@ -180,6 +180,7 @@ function renderAreaChart(labels, values) {
     if (!ctx) return;
 
     if (areaChartInstance) areaChartInstance.destroy();
+    const colors = getTooltipColors();
     const grad = ctx.getContext('2d').createLinearGradient(0, 0, 0, 260);
     grad.addColorStop(0, 'rgba(16, 185, 129, 0.4)');
     grad.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
@@ -189,7 +190,7 @@ function renderAreaChart(labels, values) {
         data: {
             labels: labels || [],
             datasets: [{
-                label: 'Daily Sales (₹)',
+                label: 'Daily Sales',
                 data: values || [],
                 borderColor: '#10b981',
                 borderWidth: 3.5,
@@ -214,12 +215,12 @@ function renderAreaChart(labels, values) {
                     titleColor: colors.title,
                     bodyColor: colors.body,
                     padding: 14,
-                    callbacks: { label: ctx => ` Sales: ₹${Number(ctx.parsed.y).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` }
+                    callbacks: { label: ctx => ` Sales: ${typeof formatCurrency === 'function' ? formatCurrency(ctx.parsed.y) : '$' + ctx.parsed.y}` }
                 }
             },
             scales: {
                 x: { grid: { color: colors.gridColor }, ticks: { color: colors.textMuted, font: { size: 11.5, weight: '700' } } },
-                y: { grid: { color: colors.gridColor }, ticks: { color: colors.textMuted, font: { size: 11.5 }, callback: v => '₹' + Number(v).toLocaleString('en-IN') } }
+                y: { grid: { color: colors.gridColor }, ticks: { color: colors.textMuted, font: { size: 11.5 }, callback: v => typeof formatCurrency === 'function' ? formatCurrency(v) : '$' + v } }
             }
         }
     });

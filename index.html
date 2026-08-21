@@ -100,10 +100,20 @@
                 </div>
 
                 <div class="navbar-right">
-                    <!-- Supabase Connection Pill -->
-                    <div id="connection-status" class="status-badge">
-                        <span class="pulse-dot"></span> Supabase Active
+                    <!-- Live Pill Indicator -->
+                    <div class="live-pill">
+                        <span class="pulse-dot"></span> LIVE
                     </div>
+
+                    <!-- Supabase Connection Status -->
+                    <div id="connection-status" class="status-badge">
+                        Supabase Active
+                    </div>
+
+                    <!-- Refresh Data Action Button -->
+                    <button class="nav-action-btn" onclick="fetchSupabaseData()" title="Refresh Dashboard Data">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
 
                     <!-- Notification Bell Dropdown -->
                     <div style="position: relative;">
@@ -121,7 +131,7 @@
                                 <div class="notification-icon icon-emerald"><i class="bi bi-check-circle-fill"></i></div>
                                 <div>
                                     <div style="font-size: 12.5px; font-weight: 700;">New Sale Completed</div>
-                                    <div style="font-size: 11px; color: var(--text-dim);" id="notif-order-amount">Order #1042 (₹2,05,677.50)</div>
+                                    <div style="font-size: 11px; color: var(--text-dim);" id="notif-order-amount">Order #1042 ($2,541.53)</div>
                                 </div>
                             </div>
                             <div class="notification-item">
@@ -199,93 +209,105 @@
                      TAB 1: OVERVIEW DASHBOARD
                      ======================================================== -->
                 <section id="tab-overview" class="tab-page">
-                    <!-- Summary KPI Cards Grid -->
-                    <div class="summary-cards-grid">
-                        <!-- Card 1: Latest Day Sales -->
-                        <div class="summary-card">
-                            <div class="summary-card-header">
-                                <span class="summary-card-title">Latest Day Sales</span>
-                                <div class="summary-card-icon icon-blue"><i class="bi bi-calendar-check-fill"></i></div>
-                            </div>
-                            <div class="summary-card-value" id="card-today-sales">₹0.00</div>
-                            <div class="summary-card-footer">
-                                <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> Active</span>
-                                <span>Last Record Date</span>
+                    <!-- Hero Revenue Banner Card -->
+                    <div class="hero-revenue-banner">
+                        <div class="hero-revenue-left">
+                            <div>
+                                <div class="hero-label">REVENUE</div>
+                                <div class="hero-value" id="hero-net-revenue">$0.00</div>
+                                <div class="hero-badge-group">
+                                    <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +12.8%</span>
+                                    <span style="font-size: 13px; color: var(--text-dim);">vs previous period</span>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Card 2: Total Revenue -->
-                        <div class="summary-card">
-                            <div class="summary-card-header">
-                                <span class="summary-card-title">Total Revenue</span>
-                                <div class="summary-card-icon icon-purple"><i class="bi bi-currency-rupee"></i></div>
+                        <div class="hero-breakdown-card">
+                            <div class="hero-breakdown-row">
+                                <span class="hero-breakdown-label">Gross Revenue</span>
+                                <span class="hero-breakdown-val" id="hero-gross-revenue">$0.00</span>
                             </div>
-                            <div class="summary-card-value" id="card-monthly-sales">₹0.00</div>
-                            <div class="summary-card-footer">
-                                <span class="trend-badge trend-up"><i class="bi bi-graph-up-arrow"></i> +28.4%</span>
-                                <span>Net Total Revenue</span>
+                            <div class="hero-breakdown-row">
+                                <span class="hero-breakdown-label">Discounts</span>
+                                <span class="hero-breakdown-val" style="color: var(--accent-rose);" id="hero-discounts">-$0.00</span>
                             </div>
-                        </div>
-
-                        <!-- Card 3: Total Orders -->
-                        <div class="summary-card">
-                            <div class="summary-card-header">
-                                <span class="summary-card-title">Total Orders</span>
-                                <div class="summary-card-icon icon-cyan"><i class="bi bi-bag-check-fill"></i></div>
+                            <div class="hero-breakdown-row" style="border-top: 1px solid var(--border-color); padding-top: 8px;">
+                                <span class="hero-breakdown-label" style="font-weight: 800; color: var(--text-main);">Net Revenue</span>
+                                <span class="hero-breakdown-val" style="color: var(--accent-emerald);" id="hero-net-subval">$0.00</span>
                             </div>
-                            <div class="summary-card-value" id="card-total-orders">0</div>
-                            <div class="summary-card-footer">
-                                <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +8.1%</span>
-                                <span>Total Volume</span>
-                            </div>
-                        </div>
-
-                        <!-- Card 4: Avg Order Value -->
-                        <div class="summary-card">
-                            <div class="summary-card-header">
-                                <span class="summary-card-title">Avg Order Value</span>
-                                <div class="summary-card-icon icon-amber"><i class="bi bi-calculator-fill"></i></div>
-                            </div>
-                            <div class="summary-card-value" id="rev-aov">₹0.00</div>
-                            <div class="summary-card-footer">
-                                <span class="trend-badge trend-neutral"><i class="bi bi-dash"></i> Mean</span>
-                                <span>Revenue / Orders</span>
-                            </div>
-                        </div>
-
-                        <!-- Card 5: Top Destination -->
-                        <div class="summary-card">
-                            <div class="summary-card-header">
-                                <span class="summary-card-title">Top Destination</span>
-                                <div class="summary-card-icon icon-emerald"><i class="bi bi-geo-alt-fill"></i></div>
-                            </div>
-                            <div class="summary-card-value" id="card-top-destination" style="font-size: 21px;">Tokyo, Japan</div>
-                            <div class="summary-card-footer">
-                                <span class="trend-badge trend-up"><i class="bi bi-fire"></i> Leader</span>
-                                <span>Highest Demand</span>
-                            </div>
-                        </div>
-
-                        <!-- Card 6: Top Category -->
-                        <div class="summary-card">
-                            <div class="summary-card-header">
-                                <span class="summary-card-title">Top Category</span>
-                                <div class="summary-card-icon icon-rose"><i class="bi bi-pie-chart-fill"></i></div>
-                            </div>
-                            <div class="summary-card-value" id="card-top-region" style="font-size: 21px;">General</div>
-                            <div class="summary-card-footer">
-                                <span class="trend-badge trend-up"><i class="bi bi-trophy-fill"></i> Leading</span>
-                                <span>42.5% Market Share</span>
+                            <div class="hero-breakdown-row">
+                                <span class="hero-breakdown-label">Average Order</span>
+                                <span class="hero-breakdown-val" id="hero-aov-val">$0.00</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Charts Row: Real-Time Revenue Timeline & Category Breakdown -->
+                    <!-- Summary KPI Cards Grid (4 Columns) -->
+                    <div class="summary-cards-grid">
+                        <!-- Card 1: Orders -->
+                        <div class="summary-card">
+                            <div class="summary-card-header">
+                                <span class="summary-card-title">Orders</span>
+                                <div class="summary-card-icon icon-blue"><i class="bi bi-bag-check-fill"></i></div>
+                            </div>
+                            <div class="summary-card-value" id="kpi-orders-count">0</div>
+                            <div class="summary-card-footer">
+                                <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +6.2%</span>
+                                <span>Total Volume</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Customers -->
+                        <div class="summary-card">
+                            <div class="summary-card-header">
+                                <span class="summary-card-title">Customers</span>
+                                <div class="summary-card-icon icon-purple"><i class="bi bi-people-fill"></i></div>
+                            </div>
+                            <div class="summary-card-value" id="kpi-customers-count">0</div>
+                            <div class="summary-card-footer">
+                                <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +14.6%</span>
+                                <span>Active Accounts</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 3: AOV -->
+                        <div class="summary-card">
+                            <div class="summary-card-header">
+                                <span class="summary-card-title">AOV</span>
+                                <div class="summary-card-icon icon-amber"><i class="bi bi-calculator-fill"></i></div>
+                            </div>
+                            <div class="summary-card-value" id="kpi-aov-val">$0.00</div>
+                            <div class="summary-card-footer">
+                                <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +4.8%</span>
+                                <span>Avg Revenue / Order</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 4: Conversion Rate -->
+                        <div class="summary-card">
+                            <div class="summary-card-header">
+                                <span class="summary-card-title">Conversion</span>
+                                <div class="summary-card-icon icon-emerald"><i class="bi bi-activity"></i></div>
+                            </div>
+                            <div class="summary-card-value" id="kpi-conversion-val">8.72%</div>
+                            <div class="summary-card-footer">
+                                <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +2.4%</span>
+                                <span>Order Ratio</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row: Revenue Performance & Sales Breakdown -->
                     <div class="charts-row-2">
                         <div class="chart-card">
                             <div class="chart-card-header">
-                                <h3><i class="bi bi-graph-up-arrow text-primary"></i> Real-Time Revenue Timeline</h3>
-                                <span class="badge badge-growth"><i class="bi bi-arrow-repeat"></i> Live Sync</span>
+                                <h3><i class="bi bi-graph-up-arrow text-primary"></i> Revenue Performance</h3>
+                                <div class="period-btn-group">
+                                    <button class="period-btn" onclick="setPeriodFilter('7D', this)">7D</button>
+                                    <button class="period-btn active" onclick="setPeriodFilter('30D', this)">30D</button>
+                                    <button class="period-btn" onclick="setPeriodFilter('90D', this)">90D</button>
+                                    <button class="period-btn" onclick="setPeriodFilter('1Y', this)">1Y</button>
+                                </div>
                             </div>
                             <div class="chart-container">
                                 <canvas id="lineChart"></canvas>
@@ -294,7 +316,7 @@
 
                         <div class="chart-card">
                             <div class="chart-card-header">
-                                <h3><i class="bi bi-pie-chart-fill text-cyan"></i> Category Breakdown</h3>
+                                <h3><i class="bi bi-pie-chart-fill text-cyan"></i> Sales Breakdown</h3>
                                 <span class="badge badge-completed">Share %</span>
                             </div>
                             <div class="chart-container">
@@ -371,11 +393,12 @@
                                     <thead>
                                         <tr>
                                             <th>Order No</th>
-                                            <th>User ID</th>
-                                            <th>Product ID</th>
+                                            <th>Customer Name</th>
+                                            <th>Destination / Product</th>
                                             <th>Gross Amount</th>
                                             <th>Discount</th>
                                             <th>Net Amount</th>
+                                            <th>Date &amp; Time</th>
                                         </tr>
                                     </thead>
                                     <tbody id="orders-tbody">

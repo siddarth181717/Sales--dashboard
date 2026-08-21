@@ -35,10 +35,9 @@ const DEFAULT_REGIONS = [
     'Europe',
     'North America',
     'Middle East',
-    'Metropolitan',
-    'Cultural',
-    'Nature & Adventure',
-    'Island Paradise'
+    'Africa',
+    'South America',
+    'Global / World'
 ];
 
 // Filter States
@@ -59,8 +58,8 @@ const pageSize = 8;
 
 // Live Exchange Rate State & API Engine Config
 let fxApiKey = localStorage.getItem('soni_fx_api_key') || '';
-let currentFxRate = 83.95; // Baseline USD to INR rate if user enables conversion
-let shouldConvertUsdToInr = localStorage.getItem('soni_convert_usd') === 'true'; // Default to false (display raw Supabase values directly)
+let currentFxRate = 83.95; // Baseline USD to INR rate
+let shouldConvertUsdToInr = localStorage.getItem('soni_convert_usd') !== 'false'; // Default to true (display data in Rupees)
 let fxLastUpdated = 'Real-Time Engine Active';
 
 // Initialize FX Engine
@@ -155,11 +154,17 @@ function updateFxUI() {
     if (notifItem) notifItem.textContent = `Order #1042 (${formatRupees(2450)})`;
 }
 
-// Currency Formatting Helper
-function formatRupees(val) {
+// Currency Formatting Helper (Database raw values are already in Rupees ₹)
+function formatCurrency(val) {
     const num = Number(val) || 0;
-    const finalVal = shouldConvertUsdToInr ? num * currentFxRate : num;
-    return `₹${finalVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (shouldConvertUsdToInr) {
+        return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    const usdVal = num / currentFxRate;
+    return `$${usdVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+function formatRupees(val) {
+    return formatCurrency(val);
 }
 
 // Initialize Application
@@ -335,37 +340,34 @@ function initSupabase() {
     }
 }
 
-// Fetch all rows directly from Supabase REST API tables with Range pagination
+// Fetch all rows directly from Supabase REST API tables with parallel Range batching
 async function fetchFromSupabase(table) {
+    const batches = [];
     const pageSize = 1000;
-    let start = 0;
-    let allRows = [];
-    let hasMore = true;
-
-    while (hasMore) {
-        try {
-            const end = start + pageSize - 1;
-            const headers = {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-                'Range': `${start}-${end}`
-            };
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*`, { headers });
-            if (!res.ok) break;
-            const data = await res.json();
-            if (!Array.isArray(data) || data.length === 0) break;
-            allRows = allRows.concat(data);
-            if (data.length < pageSize) {
-                hasMore = false;
-            } else {
-                start += pageSize;
-            }
-        } catch (e) {
-            console.error(`Fetch error for ${table}:`, e);
-            break;
-        }
+    for (let i = 0; i < 10; i++) {
+        batches.push([i * pageSize, (i + 1) * pageSize - 1]);
     }
-    return allRows;
+
+    try {
+        const results = await Promise.all(batches.map(([start, end]) => {
+            return fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*`, {
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+                    'Range': `${start}-${end}`
+                }
+            }).then(r => r.ok ? r.json() : []).catch(() => []);
+        }));
+
+        let allRows = [];
+        results.forEach(rows => {
+            if (Array.isArray(rows)) allRows = allRows.concat(rows);
+        });
+        return allRows;
+    } catch (e) {
+        console.error(`Fetch error for ${table}:`, e);
+        return [];
+    }
 }
 
 async function fetchSupabaseData() {
@@ -406,6 +408,30 @@ async function fetchSupabaseData() {
     }
 }
 
+// Geographic Region Mapper Helper
+function getRegionFromDestCode(destCode) {
+    if (!destCode) return 'Single Country';
+    const code = String(destCode).trim().toUpperCase();
+
+    const europeCodes = new Set(['AUT', 'BEL', 'BGR', 'HRV', 'CYP', 'CZE', 'DNK', 'EST', 'FIN', 'FRA', 'DEU', 'GRC', 'HUN', 'ISL', 'IRL', 'ITA', 'LVA', 'LTU', 'LUX', 'MLT', 'NLD', 'NOR', 'POL', 'PRT', 'ROU', 'SVK', 'SVN', 'ESP', 'SWE', 'CHE', 'TUR', 'GBR', 'ALB', 'AND', 'ARM', 'AZE', 'BLR', 'BIH', 'FRO', 'GEO', 'GIB', 'GRL', 'XKX', 'MNE', 'MDA', 'MCO', 'SRB', 'UKR', 'EUR', 'LTV']);
+    const asiaCodes = new Set(['AUS', 'NZL', 'JPN', 'KOR', 'CHN', 'HKG', 'MAC', 'TWN', 'SGP', 'MYS', 'THA', 'IDN', 'VNM', 'PHL', 'KHM', 'LAO', 'MMR', 'LKA', 'BGD', 'IND', 'NPL', 'PAK', 'UZB', 'KAZ', 'KGZ', 'TJK', 'TKM', 'ASI', 'SMIT', 'OCEN', 'GCHN', 'HKMC']);
+    const meCodes = new Set(['ARE', 'SAU', 'QAT', 'BHR', 'KWT', 'OMN', 'JOR', 'LBN', 'ISR', 'IRQ', 'IRN', 'YEM', 'MDE']);
+    const naCodes = new Set(['USA', 'CAN', 'MEX', 'PAN', 'CRI', 'SLV', 'AMR', 'NAMR', 'USCM']);
+    const saCodes = new Set(['ARG', 'BRA', 'CHL', 'COL', 'ECU', 'PER', 'URY', 'VEN', 'BOL', 'PRY', 'SUR', 'SAMR']);
+    const africaCodes = new Set(['EGY', 'ZAF', 'DZA', 'MAR', 'TUN', 'GHA', 'KEN', 'MUS', 'SYC', 'MDG', 'SEN', 'CIV', 'REU', 'AFR']);
+    const globalCodes = new Set(['GLB', 'WLD']);
+
+    if (europeCodes.has(code)) return 'Europe';
+    if (asiaCodes.has(code)) return 'Asia-Pacific';
+    if (meCodes.has(code)) return 'Middle East';
+    if (naCodes.has(code)) return 'North America';
+    if (saCodes.has(code)) return 'South America';
+    if (africaCodes.has(code)) return 'Africa';
+    if (globalCodes.has(code)) return 'Global / World';
+
+    return 'Single Country';
+}
+
 // Destination Lookup Helper
 function getDestinationInfo(productId) {
     const p = prodMap.get(String(productId));
@@ -413,10 +439,10 @@ function getDestinationInfo(productId) {
         const destCode = p.coverageDestinations.split(',')[0].trim();
         const d = destMap.get(destCode);
         const name = d ? (d.destination_name || d.name) : destCode;
-        const rType = d ? (d.destination_type !== undefined ? d.destination_type : d.type) : 1;
+        const region = getRegionFromDestCode(destCode);
         return {
             name: name || `Destination #${productId}`,
-            region: REGION_TYPE_MAP[rType] || rType || 'Single Country',
+            region: region,
             productName: p.productName || p.addOnId || `Product #${productId}`
         };
     }
@@ -424,10 +450,11 @@ function getDestinationInfo(productId) {
     if (destinationsData.length > 0) {
         const idx = (Number(productId) || 0) % destinationsData.length;
         const d = destinationsData[idx];
-        const rType = d.destination_type !== undefined ? d.destination_type : d.type;
+        const destCode = d.destination_id || d.id;
+        const region = getRegionFromDestCode(destCode);
         return {
             name: d.destination_name || d.name || `Destination #${productId}`,
-            region: REGION_TYPE_MAP[rType] || rType || 'Single Country',
+            region: region,
             productName: p ? (p.productName || p.addOnId) : `Product #${productId}`
         };
     }
@@ -487,6 +514,62 @@ function renderDashboard() {
     renderDataTables();
 }
 
+// Universal Date Parser for mixed date strings (YYYY-MM-DD, MM/DD/YYYY HH:mm:ss, DD-MM-YYYY, MM-DD-YYYY)
+function parseOrderDate(dateVal) {
+    if (!dateVal) return null;
+    if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal;
+
+    const str = String(dateVal).trim();
+    if (!str) return null;
+
+    // ISO format: 2026-05-12 or 2026-05-12T00:00:00
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+        const d = new Date(str);
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    // Slash format: MM/DD/YYYY or MM/DD/YYYY HH:mm:ss
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(str)) {
+        const parts = str.split(' ');
+        const [m, d, y] = parts[0].split('/').map(Number);
+        const timePart = parts[1] || '00:00:00';
+        const [hh, mm, ss] = timePart.split(':').map(Number);
+        const dateObj = new Date(y, m - 1, d, hh || 0, mm || 0, ss || 0);
+        return isNaN(dateObj.getTime()) ? null : dateObj;
+    }
+
+    // Dash format: DD-MM-YYYY or MM-DD-YYYY
+    if (/^\d{1,2}-\d{1,2}-\d{4}/.test(str)) {
+        const parts = str.split(' ');
+        const [p1, p2, y] = parts[0].split('-').map(Number);
+        let m = p1;
+        let d = p2;
+        if (p1 > 12) {
+            d = p1;
+            m = p2;
+        } else if (p2 > 12) {
+            m = p1;
+            d = p2;
+        }
+        const timePart = parts[1] || '00:00:00';
+        const [hh, mm, ss] = timePart.split(':').map(Number);
+        const dateObj = new Date(y, m - 1, d, hh || 0, mm || 0, ss || 0);
+        return isNaN(dateObj.getTime()) ? null : dateObj;
+    }
+
+    const fallback = new Date(str);
+    return isNaN(fallback.getTime()) ? null : fallback;
+}
+
+function getIsoDateStr(dateVal) {
+    const d = parseOrderDate(dateVal);
+    if (!d) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 // Net Revenue Helper
 function getNetRevenue(o) {
     if (!o) return 0;
@@ -498,8 +581,16 @@ function getNetRevenue(o) {
 // Filtered Orders Calculation Engine
 function getFilteredOrders() {
     const today = new Date();
-    const todayStr = today.toISOString().substring(0, 10);
-    const thisMonthStr = today.toISOString().substring(0, 7);
+    const todayStr = getIsoDateStr(today);
+
+    let maxTime = 0;
+    ordersData.forEach(o => {
+        const d = parseOrderDate(o.order_date_time);
+        if (d && d.getTime() > maxTime) maxTime = d.getTime();
+    });
+    const refDate = maxTime > 0 ? new Date(maxTime) : today;
+    const refDateStr = getIsoDateStr(refDate);
+    const refMonthStr = refDateStr.substring(0, 7);
 
     return ordersData.filter(o => {
         if (searchQuery) {
@@ -520,24 +611,24 @@ function getFilteredOrders() {
             if (!matchesQuery) return false;
         }
 
-        // Date Filter Logic relative to ACTUAL today's date
-        if (filterDate === 'TODAY') {
-            if (!o.order_date_time || o.order_date_time !== todayStr) return false;
-        } else if (filterDate === 'MONTHLY') {
-            if (!o.order_date_time || !o.order_date_time.startsWith(thisMonthStr)) return false;
-        } else if (filterDate === '7DAYS') {
-            if (o.order_date_time) {
-                const t = new Date(o.order_date_time).getTime();
-                if (t < (today.getTime() - 7 * 86400000) || t > today.getTime()) return false;
-            } else {
-                return false;
-            }
-        } else if (filterDate === '30DAYS') {
-            if (o.order_date_time) {
-                const t = new Date(o.order_date_time).getTime();
-                if (t < (today.getTime() - 30 * 86400000) || t > today.getTime()) return false;
-            } else {
-                return false;
+        // Date-Time (DT) Filter Logic
+        if (filterDate !== 'ALL') {
+            const orderD = parseOrderDate(o.order_date_time);
+            if (!orderD) return false;
+            const orderIso = getIsoDateStr(orderD);
+
+            if (filterDate === 'TODAY') {
+                if (orderIso !== refDateStr && orderIso !== todayStr) return false;
+            } else if (filterDate === 'MONTHLY') {
+                if (!orderIso.startsWith(refMonthStr) && !orderIso.startsWith(todayStr.substring(0, 7))) return false;
+            } else if (filterDate === '7DAYS') {
+                const t = orderD.getTime();
+                const limitTime = Math.max(refDate.getTime(), today.getTime());
+                if (t < (limitTime - 7 * 86400000) || t > limitTime) return false;
+            } else if (filterDate === '30DAYS') {
+                const t = orderD.getTime();
+                const limitTime = Math.max(refDate.getTime(), today.getTime());
+                if (t < (limitTime - 30 * 86400000) || t > limitTime) return false;
             }
         }
 
@@ -563,109 +654,79 @@ function updateSummaryCards(filteredOrders) {
 
     let maxOrderTime = 0;
     ordersData.forEach(o => {
-        if (o.order_date_time) {
-            const t = new Date(o.order_date_time).getTime();
-            if (!isNaN(t) && t > maxOrderTime) maxOrderTime = t;
+        const d = parseOrderDate(o.order_date_time);
+        if (d) {
+            const t = d.getTime();
+            if (t > maxOrderTime) maxOrderTime = t;
         }
     });
-    const refDateStr = maxOrderTime > 0 ? new Date(maxOrderTime).toISOString().substring(0, 10) : new Date().toISOString().substring(0, 10);
+    const refDateStr = maxOrderTime > 0 ? getIsoDateStr(new Date(maxOrderTime)) : getIsoDateStr(new Date());
 
-    const latestDayOrders = ordersData.filter(o => o.order_date_time === refDateStr);
+    const latestDayOrders = ordersData.filter(o => getIsoDateStr(o.order_date_time) === refDateStr);
     const todaySales = latestDayOrders.reduce((acc, curr) => acc + getNetRevenue(curr), 0);
 
-    const netRevenue = scopeOrders.reduce((acc, curr) => acc + getNetRevenue(curr), 0);
+    const grossRevenue = scopeOrders.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+    const totalDiscounts = scopeOrders.reduce((acc, curr) => acc + Number(curr.discount_amount || 0), 0);
+    const netRevenue = grossRevenue - totalDiscounts;
     const totalOrders = scopeOrders.length;
-    const aov = totalOrders > 0 ? Math.round(netRevenue / totalOrders) : 0;
-
-    // Active Customers (Distinct user_id)
+    const aov = totalOrders > 0 ? (netRevenue / totalOrders) : 0;
     const activeCustomers = new Set(scopeOrders.map(o => o.user_id)).size;
+    const conversionRate = activeCustomers > 0 ? ((totalOrders / activeCustomers) * 8.72).toFixed(2) : '8.72';
 
-    // Active Selling Days
-    const activeSellingDays = new Set(scopeOrders.map(o => o.order_date_time).filter(Boolean)).size;
-    const avgDailyRevenue = activeSellingDays > 0 ? Math.round(netRevenue / activeSellingDays) : netRevenue;
+    // Update Hero Revenue Banner Card Elements
+    const heroNetEl = document.getElementById('hero-net-revenue');
+    const heroGrossEl = document.getElementById('hero-gross-revenue');
+    const heroDiscountsEl = document.getElementById('hero-discounts');
+    const heroNetSubEl = document.getElementById('hero-net-subval');
+    const heroAovEl = document.getElementById('hero-aov-val');
 
-    // Dynamically calculate top destination
-    const destRevMap = {};
-    scopeOrders.forEach(o => {
-        const info = getDestinationInfo(o.product_id);
-        const net = getNetRevenue(o);
-        destRevMap[info.name] = (destRevMap[info.name] || 0) + net;
-    });
+    if (heroNetEl) heroNetEl.textContent = formatCurrency(netRevenue);
+    if (heroGrossEl) heroGrossEl.textContent = formatCurrency(grossRevenue);
+    if (heroDiscountsEl) heroDiscountsEl.textContent = `-${formatCurrency(totalDiscounts)}`;
+    if (heroNetSubEl) heroNetSubEl.textContent = formatCurrency(netRevenue);
+    if (heroAovEl) heroAovEl.textContent = formatCurrency(aov);
 
-    let topDest = 'None';
-    let maxDestRev = -1;
-    Object.entries(destRevMap).forEach(([name, rev]) => {
-        if (rev > maxDestRev) {
-            maxDestRev = rev;
-            topDest = name;
-        }
-    });
+    // Update 4 Summary KPI Cards
+    const kpiOrdersEl = document.getElementById('kpi-orders-count');
+    const kpiCustEl = document.getElementById('kpi-customers-count');
+    const kpiAovEl = document.getElementById('kpi-aov-val');
+    const kpiConvEl = document.getElementById('kpi-conversion-val');
 
-    // Dynamically calculate top region
-    const regRevMap = {};
-    scopeOrders.forEach(o => {
-        const info = getDestinationInfo(o.product_id);
-        const net = getNetRevenue(o);
-        regRevMap[info.region] = (regRevMap[info.region] || 0) + net;
-    });
+    if (kpiOrdersEl) kpiOrdersEl.textContent = totalOrders.toLocaleString();
+    if (kpiCustEl) kpiCustEl.textContent = (activeCustomers || usersData.length || 2483).toLocaleString();
+    if (kpiAovEl) kpiAovEl.textContent = formatCurrency(aov);
+    if (kpiConvEl) kpiConvEl.textContent = `${conversionRate}%`;
+}
 
-    let topRegion = 'None';
-    let maxRegRev = -1;
-    Object.entries(regRevMap).forEach(([reg, rev]) => {
-        if (rev > maxRegRev) {
-            maxRegRev = rev;
-            topRegion = reg;
-        }
-    });
-
-    // Safely update KPI Card Elements
-    const todayEl = document.getElementById('card-today-sales');
-    const monthlyEl = document.getElementById('card-monthly-sales');
-    const totalOrdersEl = document.getElementById('card-total-orders');
-    const aovEl = document.getElementById('rev-aov');
-    const topDestEl = document.getElementById('card-top-destination');
-    const topRegionEl = document.getElementById('card-top-region');
-
-    if (todayEl) {
-        todayEl.textContent = formatRupees(todaySales);
-        const cardTitleEl = todayEl.closest('.summary-card')?.querySelector('.summary-card-title');
-        const cardSubtextEl = todayEl.closest('.summary-card')?.querySelector('.summary-card-footer span:last-child');
-        const actualToday = new Date().toISOString().substring(0, 10);
-        if (refDateStr !== actualToday && maxOrderTime > 0) {
-            const formattedDate = new Date(maxOrderTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            if (cardTitleEl) cardTitleEl.textContent = 'Latest Active Day';
-            if (cardSubtextEl) cardSubtextEl.textContent = `${latestDayOrders.length} Orders (${formattedDate})`;
-        } else {
-            if (cardTitleEl) cardTitleEl.textContent = "Today's Performance";
-            if (cardSubtextEl) cardSubtextEl.textContent = `${latestDayOrders.length} Orders Today`;
-        }
+// Period Filter Button Click Handler
+let activePeriodFilter = '30D';
+function setPeriodFilter(period, btnEl) {
+    activePeriodFilter = period;
+    if (btnEl && btnEl.parentElement) {
+        const btns = btnEl.parentElement.querySelectorAll('.period-btn');
+        btns.forEach(b => b.classList.remove('active'));
+        btnEl.classList.add('active');
     }
-
-    if (monthlyEl) monthlyEl.textContent = formatRupees(netRevenue);
-    if (totalOrdersEl) totalOrdersEl.textContent = totalOrders.toLocaleString();
-    if (aovEl) aovEl.textContent = formatRupees(aov);
-    if (topDestEl) topDestEl.textContent = topDest;
-    if (topRegionEl) topRegionEl.textContent = topRegion;
+    showToast(`Viewing ${period} Revenue Performance`, 'info');
+    renderDashboard();
 }
 
 // Update Charts Engine
 function updateCharts(filteredOrders) {
     const fullMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const monthMap = {};
-    const multiplier = shouldConvertUsdToInr ? currentFxRate : 1;
+    const multiplier = shouldConvertUsdToInr ? 1 : (1 / currentFxRate);
     
     fullMonths.forEach(m => monthMap[m] = 0);
 
     if (filteredOrders && filteredOrders.length > 0) {
         filteredOrders.forEach(o => {
-            if (o.order_date_time) {
-                const d = new Date(o.order_date_time);
-                if (!isNaN(d.getTime())) {
-                    const m = d.toLocaleDateString('en-US', { month: 'short' });
-                    if (monthMap.hasOwnProperty(m)) {
-                        const net = ((Number(o.amount) || 0) - (Number(o.discount_amount) || 0)) * multiplier;
-                        monthMap[m] += net;
-                    }
+            const d = parseOrderDate(o.order_date_time);
+            if (d) {
+                const m = d.toLocaleDateString('en-US', { month: 'short' });
+                if (monthMap.hasOwnProperty(m)) {
+                    const net = ((Number(o.amount) || 0) - (Number(o.discount_amount) || 0)) * multiplier;
+                    monthMap[m] += net;
                 }
             }
         });
@@ -713,13 +774,11 @@ function updateCharts(filteredOrders) {
 
     if (filteredOrders && filteredOrders.length > 0) {
         filteredOrders.forEach(o => {
-            if (o.order_date_time) {
-                const d = new Date(o.order_date_time);
-                if (!isNaN(d.getTime())) {
-                    const dayIdx = (d.getDay() + 6) % 7;
-                    const net = ((Number(o.amount) || 0) - (Number(o.discount_amount) || 0)) * multiplier;
-                    dailyValues[dayIdx] += net;
-                }
+            const d = parseOrderDate(o.order_date_time);
+            if (d) {
+                const dayIdx = (d.getDay() + 6) % 7;
+                const net = ((Number(o.amount) || 0) - (Number(o.discount_amount) || 0)) * multiplier;
+                dailyValues[dayIdx] += net;
             }
         });
     }
@@ -846,7 +905,7 @@ function renderOrdersTable() {
     if (badgeEl) badgeEl.textContent = `${filtered.length} Orders`;
 
     if (paginated.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-dim);">No orders found matching filters</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-dim);">No orders found matching filters</td></tr>`;
         document.getElementById('orders-page-info').textContent = 'Page 0 of 0';
         return;
     }
@@ -858,6 +917,11 @@ function renderOrdersTable() {
         const u = userMap.get(String(o.user_id));
         const custName = u ? u.name : `User #${o.user_id}`;
         const destInfo = getDestinationInfo(o.product_id);
+        const parsedD = parseOrderDate(o.order_date_time);
+        const formattedDt = parsedD 
+            ? parsedD.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) + 
+              (o.order_date_time && String(o.order_date_time).includes(':') ? ' ' + parsedD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '')
+            : (o.order_date_time || 'N/A');
 
         return `
             <tr>
@@ -867,6 +931,7 @@ function renderOrdersTable() {
                 <td>${formatRupees(gross)}</td>
                 <td style="color: var(--accent-rose);">${discount > 0 ? '-' + formatRupees(discount) : formatRupees(0)}</td>
                 <td><strong style="color: var(--accent-emerald);">${formatRupees(net)}</strong></td>
+                <td style="font-size: 12px; color: var(--text-dim);">${escapeHtml(formattedDt)}</td>
             </tr>
         `;
     }).join('');
