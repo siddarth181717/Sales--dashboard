@@ -393,10 +393,49 @@ async function fetchSupabaseData() {
             fetchFromSupabase('destinations_rows')
         ]);
 
-        if (oRes && oRes.length > 0) ordersData = oRes;
-        if (uRes && uRes.length > 0) usersData = uRes;
-        if (pRes && pRes.length > 0) productsData = pRes;
-        if (dRes && dRes.length > 0) destinationsData = dRes;
+        if (oRes && oRes.length > 0) {
+            const seenOrders = new Set();
+            ordersData = oRes.filter(o => {
+                if (!o || o.order_no == null) return false;
+                const key = String(o.order_no);
+                if (seenOrders.has(key)) return false;
+                seenOrders.add(key);
+                return true;
+            });
+        }
+
+        if (uRes && uRes.length > 0) {
+            const seenUsers = new Set();
+            usersData = uRes.filter(u => {
+                if (!u || u.user_id == null) return false;
+                const key = String(u.user_id);
+                if (seenUsers.has(key)) return false;
+                seenUsers.add(key);
+                return true;
+            });
+        }
+
+        if (pRes && pRes.length > 0) {
+            const seenProds = new Set();
+            productsData = pRes.filter(p => {
+                if (!p) return false;
+                const key = String(p.prod_id != null ? p.prod_id : (p.id || ''));
+                if (!key || seenProds.has(key)) return false;
+                seenProds.add(key);
+                return true;
+            });
+        }
+
+        if (dRes && dRes.length > 0) {
+            const seenDests = new Set();
+            destinationsData = dRes.filter(d => {
+                if (!d) return false;
+                const key = String(d.destination_id || d.id || '');
+                if (!key || seenDests.has(key)) return false;
+                seenDests.add(key);
+                return true;
+            });
+        }
 
         if (ordersData.length === 0) rlsNotice = true;
 
