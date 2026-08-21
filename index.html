@@ -183,8 +183,14 @@
                     </div>
 
                     <div class="filter-group">
+                        <div class="calendar-picker-wrapper" title="Select single day calendar filter">
+                            <i class="bi bi-calendar-date-fill text-primary" style="font-size: 15px;"></i>
+                            <input type="date" id="calendar-date-input" class="calendar-date-input" onchange="onCalendarDateChange(this.value)">
+                        </div>
+
                         <select id="filter-date" class="select-filter">
                             <option value="ALL" selected>All Time (Full Range)</option>
+                            <option value="CUSTOM">Specific Calendar Day</option>
                             <option value="TODAY">Latest Single Day</option>
                             <option value="7DAYS">Last 7 Days</option>
                             <option value="MONTHLY">Latest Month</option>

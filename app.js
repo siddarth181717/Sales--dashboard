@@ -45,6 +45,18 @@ let searchQuery = '';
 let filterDate = 'ALL';
 let filterDestination = 'ALL';
 let filterRegion = 'ALL';
+let customSelectedDate = '';
+
+// Calendar Date Picker Change Handler
+function onCalendarDateChange(val) {
+    if (!val) return;
+    customSelectedDate = val;
+    filterDate = 'CUSTOM';
+    const dateFilter = document.getElementById('filter-date');
+    if (dateFilter) dateFilter.value = 'CUSTOM';
+    showToast(`📅 Calendar Filter: Fetching Live Data for ${val}`, 'info');
+    renderDashboard();
+}
 
 // Active Navigation State
 let currentTab = 'overview';
@@ -617,7 +629,9 @@ function getFilteredOrders() {
             if (!orderD) return false;
             const orderIso = getIsoDateStr(orderD);
 
-            if (filterDate === 'TODAY') {
+            if (filterDate === 'CUSTOM' && customSelectedDate) {
+                if (orderIso !== customSelectedDate) return false;
+            } else if (filterDate === 'TODAY') {
                 if (orderIso !== refDateStr && orderIso !== todayStr) return false;
             } else if (filterDate === 'MONTHLY') {
                 if (!orderIso.startsWith(refMonthStr) && !orderIso.startsWith(todayStr.substring(0, 7))) return false;
@@ -661,6 +675,12 @@ function updateSummaryCards(filteredOrders) {
         }
     });
     const refDateStr = maxOrderTime > 0 ? getIsoDateStr(new Date(maxOrderTime)) : getIsoDateStr(new Date());
+
+    const calInput = document.getElementById('calendar-date-input');
+    if (calInput && !calInput.value && refDateStr) {
+        calInput.value = refDateStr;
+        if (!customSelectedDate) customSelectedDate = refDateStr;
+    }
 
     const latestDayOrders = ordersData.filter(o => getIsoDateStr(o.order_date_time) === refDateStr);
     const todaySales = latestDayOrders.reduce((acc, curr) => acc + getNetRevenue(curr), 0);
@@ -987,9 +1007,15 @@ function setupEventListeners() {
 
     const dateFilter = document.getElementById('filter-date');
     if (dateFilter) {
-        dateFilter.value = filterDate; // Sync dropdown value with JS filter state ('ALL')
+        dateFilter.value = filterDate; // Sync dropdown value with JS filter state
         dateFilter.addEventListener('change', (e) => {
             filterDate = e.target.value;
+            if (filterDate === 'CUSTOM') {
+                const calInput = document.getElementById('calendar-date-input');
+                if (calInput && calInput.value) {
+                    customSelectedDate = calInput.value;
+                }
+            }
             showToast(`Date Filter: ${dateFilter.options[dateFilter.selectedIndex].text}`, 'info');
             renderDashboard();
         });

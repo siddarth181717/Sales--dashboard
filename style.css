@@ -1493,6 +1493,45 @@ body.light-mode .data-table th {
 }
 
 /* ========================================================
+   CALENDAR DATE PICKER STYLES
+   ======================================================== */
+.calendar-picker-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    padding: 7px 14px;
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+}
+
+.calendar-picker-wrapper:hover, .calendar-picker-wrapper:focus-within {
+    border-color: var(--border-glow);
+    box-shadow: 0 0 12px var(--primary-glow);
+}
+
+.calendar-date-input {
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-family: var(--font-family);
+    font-size: 13px;
+    font-weight: 700;
+    outline: none;
+    cursor: pointer;
+}
+
+.calendar-date-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.8) sepia(100%) saturate(1000%) hue-rotate(220deg);
+    cursor: pointer;
+}
+
+body.light-mode .calendar-date-input::-webkit-calendar-picker-indicator {
+    filter: none;
+}
+
+/* ========================================================
    PULSESALES DASHBOARD HIGHLIGHT COMPONENTS
    ======================================================== */
 .hero-revenue-banner {
