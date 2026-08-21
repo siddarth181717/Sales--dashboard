@@ -581,8 +581,28 @@ function populateFilterDropdowns() {
     const regionSelect = document.getElementById('filter-region');
     if (!destSelect || !regionSelect) return;
 
-    const dbDestNames = destinationsData.map(d => d.destination_name || d.name).filter(Boolean);
-    const allDestinations = Array.from(new Set([...DEFAULT_DESTINATIONS, ...dbDestNames]));
+    const realDestNames = new Set();
+    destinationsData.forEach(d => {
+        const name = d.destination_name || d.name;
+        if (name) realDestNames.add(name);
+    });
+
+    ordersData.forEach(o => {
+        const info = getDestinationInfo(o.product_id);
+        if (info && info.name && !info.name.startsWith('Destination #')) {
+            realDestNames.add(info.name);
+        }
+    });
+
+    const sortedDests = Array.from(realDestNames).sort();
+
+    let destHtml = '<option value="ALL">All Destinations</option>';
+    sortedDests.forEach(name => {
+        const selected = (name.toLowerCase() === filterDestination.toLowerCase()) ? ' selected' : '';
+        destHtml += `<option value="${escapeHtml(name)}"${selected}>${escapeHtml(name)}</option>`;
+    });
+    destSelect.innerHTML = destHtml;
+    destSelect.value = filterDestination;
 
     const dbRegions = destinationsData.map(d => {
         const raw = d.destination_type !== undefined && d.destination_type !== null ? d.destination_type : d.type;
@@ -592,19 +612,15 @@ function populateFilterDropdowns() {
         return raw;
     }).filter(Boolean);
 
-    const allRegions = Array.from(new Set([...DEFAULT_REGIONS, ...dbRegions]));
-
-    let destHtml = '<option value="ALL">All Destinations</option>';
-    allDestinations.forEach(name => {
-        destHtml += `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
-    });
-    destSelect.innerHTML = destHtml;
+    const allRegions = Array.from(new Set([...DEFAULT_REGIONS, ...dbRegions])).sort();
 
     let regionHtml = '<option value="ALL">All Regions</option>';
     allRegions.forEach(r => {
-        regionHtml += `<option value="${escapeHtml(String(r))}">${escapeHtml(String(r))}</option>`;
+        const selected = (String(r).toLowerCase() === filterRegion.toLowerCase()) ? ' selected' : '';
+        regionHtml += `<option value="${escapeHtml(String(r))}"${selected}>${escapeHtml(String(r))}</option>`;
     });
     regionSelect.innerHTML = regionHtml;
+    regionSelect.value = filterRegion;
 }
 
 // Main Render Function
@@ -740,7 +756,10 @@ function getFilteredOrders() {
         // Destination Filter
         if (filterDestination !== 'ALL') {
             const info = getDestinationInfo(o.product_id);
-            if (info.name.toLowerCase() !== filterDestination.toLowerCase()) return false;
+            const destName = String(info.name || '').toLowerCase();
+            const targetFilter = String(filterDestination).toLowerCase();
+            const matches = destName === targetFilter || destName.includes(targetFilter) || targetFilter.includes(destName);
+            if (!matches) return false;
         }
 
         // Region Filter
@@ -755,7 +774,7 @@ function getFilteredOrders() {
 
 // Update Summary KPI Cards
 function updateSummaryCards(filteredOrders) {
-    const scopeOrders = (filteredOrders && filteredOrders.length > 0) ? filteredOrders : ordersData;
+    const scopeOrders = filteredOrders || [];
 
     let maxOrderTime = 0;
     ordersData.forEach(o => {
