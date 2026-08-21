@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soni's Sales Dashboard - Revenue & Operations Analytics</title>
+    <title>SoniSales - Enterprise Revenue & Operations Analytics</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Bootstrap Icons CDN -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -29,7 +29,6 @@
              COLLAPSIBLE SIDEBAR NAVIGATION  
              ======================================================== -->
         <aside class="sidebar" id="sidebar">
-            <!-- Floating Sidebar Collapse Toggle Handle -->
             <button class="sidebar-toggle-pill" onclick="toggleSidebar()" title="Toggle Sidebar">
                 <i class="bi bi-chevron-left" id="sidebar-toggle-icon"></i>
             </button>
@@ -47,7 +46,7 @@
             </div>
 
             <nav class="sidebar-menu">
-                <span class="menu-category-label">Main Views</span>
+                <span class="menu-category-label">Main Dashboards</span>
                 
                 <a class="nav-link active" data-tab="overview" onclick="switchTab('overview')">
                     <i class="bi bi-grid-1x2-fill"></i>
@@ -64,11 +63,21 @@
                     <span>Data Records</span>
                 </a>
 
-                <span class="menu-category-label">Management</span>
-                
+                <span class="menu-category-label">Quick Actions</span>
+
+                <a class="nav-link" onclick="openModal('addOrderModal')">
+                    <i class="bi bi-plus-circle-fill text-emerald"></i>
+                    <span>Create New Order</span>
+                </a>
+
+                <a class="nav-link" onclick="openModal('apiKeyModal')">
+                    <i class="bi bi-currency-exchange text-cyan"></i>
+                    <span>Currency & FX Engine</span>
+                </a>
+
                 <a class="nav-link" onclick="openModal('rlsModal')">
                     <i class="bi bi-shield-lock-fill text-amber"></i>
-                    <span>SQL RLS Setup</span>
+                    <span>SQL RLS Fix</span>
                 </a>
             </nav>
 
@@ -95,12 +104,18 @@
                     </button>
                     <div class="page-breadcrumb">
                         <h2 class="page-title" id="page-current-title">Overview Dashboard</h2>
-                        <span class="page-subtitle">Real-time revenue performance & operational metrics</span>
+                        <span class="page-subtitle" id="current-date-time">Real-time revenue performance & operational metrics</span>
                     </div>
                 </div>
 
                 <div class="navbar-right">
-                    <!-- Live Pill Indicator -->
+                    <!-- Header Currency Quick Toggle Pill -->
+                    <div class="currency-toggle-pill" title="Toggle Display Currency (USD / INR)">
+                        <button class="currency-btn" id="btn-currency-inr" onclick="toggleCurrencyHeader(true)">₹ INR</button>
+                        <button class="currency-btn" id="btn-currency-usd" onclick="toggleCurrencyHeader(false)">$ USD</button>
+                    </div>
+
+                    <!-- Live Indicator Pill -->
                     <div class="live-pill">
                         <span class="pulse-dot"></span> LIVE
                     </div>
@@ -113,6 +128,11 @@
                     <!-- Refresh Data Action Button -->
                     <button class="nav-action-btn" onclick="fetchSupabaseData()" title="Refresh Dashboard Data">
                         <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+
+                    <!-- Add Quick Order Button -->
+                    <button class="btn btn-sm btn-primary-gradient" onclick="openModal('addOrderModal')" style="padding: 7px 12px; font-size: 12.5px;">
+                        <i class="bi bi-plus-lg"></i> <span class="hide-mobile">Add Order</span>
                     </button>
 
                     <!-- Notification Bell Dropdown -->
@@ -130,8 +150,8 @@
                             <div class="notification-item">
                                 <div class="notification-icon icon-emerald"><i class="bi bi-check-circle-fill"></i></div>
                                 <div>
-                                    <div style="font-size: 12.5px; font-weight: 700;">New Sale Completed</div>
-                                    <div style="font-size: 11px; color: var(--text-dim);" id="notif-order-amount">Order #1042 ($2,541.53)</div>
+                                    <div style="font-size: 12.5px; font-weight: 700;">New Order Logged</div>
+                                    <div style="font-size: 11px; color: var(--text-dim);" id="notif-order-amount">Order #1042</div>
                                 </div>
                             </div>
                             <div class="notification-item">
@@ -141,10 +161,17 @@
                                     <div style="font-size: 11px; color: var(--text-dim);">Tokyo Regional Order</div>
                                 </div>
                             </div>
+                            <div class="notification-item">
+                                <div class="notification-icon icon-purple"><i class="bi bi-graph-up-arrow"></i></div>
+                                <div>
+                                    <div style="font-size: 12.5px; font-weight: 700;">Monthly Target Reached</div>
+                                    <div style="font-size: 11px; color: var(--text-dim);">Revenue surpassed target</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Dark / Light Mode Sliding Switch Toggle -->
+                    <!-- Dark / Light Mode Switch -->
                     <div class="theme-switch-wrapper">
                         <input type="checkbox" id="theme-switch-checkbox" class="theme-switch-checkbox" onchange="toggleTheme()" checked>
                         <label for="theme-switch-checkbox" class="theme-switch-label" title="Toggle Light / Dark Mode">
@@ -175,25 +202,25 @@
                     </button>
                 </div>
 
-                <!-- Global Search & Filter Controls Bar -->
+                <!-- Global Search & Control Toolbar -->
                 <section class="filter-bar">
                     <div class="search-box">
                         <i class="bi bi-search search-icon"></i>
-                        <input type="text" id="search-input" placeholder="Search orders, amounts, users...">
+                        <input type="text" id="search-input" placeholder="Search orders, customers, amounts, locations...">
                     </div>
 
                     <div class="filter-group">
-                        <div class="calendar-picker-wrapper" title="Select single day calendar filter">
+                        <div class="calendar-picker-wrapper" title="Select specific date">
                             <i class="bi bi-calendar-date-fill text-primary" style="font-size: 15px;"></i>
                             <input type="date" id="calendar-date-input" class="calendar-date-input" onchange="onCalendarDateChange(this.value)">
                         </div>
 
                         <select id="filter-date" class="select-filter">
-                            <option value="ALL" selected>All Time (Full Range)</option>
-                            <option value="CUSTOM">Specific Calendar Day</option>
+                            <option value="ALL" selected>All Time Range</option>
+                            <option value="CUSTOM">Calendar Date</option>
                             <option value="TODAY">Latest Single Day</option>
                             <option value="7DAYS">Last 7 Days</option>
-                            <option value="MONTHLY">Latest Month</option>
+                            <option value="MONTHLY">Current Month</option>
                             <option value="30DAYS">Last 30 Days</option>
                         </select>
 
@@ -205,7 +232,11 @@
                             <option value="ALL">All Regions</option>
                         </select>
 
-                        <button class="btn btn-primary" onclick="exportToCSV()" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-md); font-weight: 700; font-size: 13px; cursor: pointer; border: none; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #fff; box-shadow: var(--shadow-sm);">
+                        <button class="btn btn-secondary-outline" onclick="resetAllFilters()" title="Reset all search & date filters">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reset
+                        </button>
+
+                        <button class="btn btn-primary-gradient" onclick="exportToCSV()">
                             <i class="bi bi-file-earmark-spreadsheet-fill"></i> Export CSV
                         </button>
                     </div>
@@ -219,10 +250,10 @@
                     <div class="hero-revenue-banner">
                         <div class="hero-revenue-left">
                             <div>
-                                <div class="hero-label">REVENUE</div>
-                                <div class="hero-value" id="hero-net-revenue">$0.00</div>
+                                <div class="hero-label">NET REVENUE</div>
+                                <div class="hero-value" id="hero-net-revenue">₹0.00</div>
                                 <div class="hero-badge-group">
-                                    <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +12.8%</span>
+                                    <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +14.2%</span>
                                     <span style="font-size: 13px; color: var(--text-dim);">vs previous period</span>
                                 </div>
                             </div>
@@ -231,83 +262,97 @@
                         <div class="hero-breakdown-card">
                             <div class="hero-breakdown-row">
                                 <span class="hero-breakdown-label">Gross Revenue</span>
-                                <span class="hero-breakdown-val" id="hero-gross-revenue">$0.00</span>
+                                <span class="hero-breakdown-val" id="hero-gross-revenue">₹0.00</span>
                             </div>
                             <div class="hero-breakdown-row">
-                                <span class="hero-breakdown-label">Discounts</span>
-                                <span class="hero-breakdown-val" style="color: var(--accent-rose);" id="hero-discounts">-$0.00</span>
+                                <span class="hero-breakdown-label">Discounts Applied</span>
+                                <span class="hero-breakdown-val" style="color: var(--accent-rose);" id="hero-discounts">-₹0.00</span>
                             </div>
                             <div class="hero-breakdown-row" style="border-top: 1px solid var(--border-color); padding-top: 8px;">
                                 <span class="hero-breakdown-label" style="font-weight: 800; color: var(--text-main);">Net Revenue</span>
-                                <span class="hero-breakdown-val" style="color: var(--accent-emerald);" id="hero-net-subval">$0.00</span>
+                                <span class="hero-breakdown-val" style="color: var(--accent-emerald);" id="hero-net-subval">₹0.00</span>
                             </div>
                             <div class="hero-breakdown-row">
-                                <span class="hero-breakdown-label">Average Order</span>
-                                <span class="hero-breakdown-val" id="hero-aov-val">$0.00</span>
+                                <span class="hero-breakdown-label">Average Order Value</span>
+                                <span class="hero-breakdown-val" id="hero-aov-val">₹0.00</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Summary KPI Cards Grid (4 Columns) -->
+                    <!-- Summary KPI Cards Grid (5 Cards Grid) -->
                     <div class="summary-cards-grid">
                         <!-- Card 1: Orders -->
                         <div class="summary-card">
                             <div class="summary-card-header">
-                                <span class="summary-card-title">Orders</span>
+                                <span class="summary-card-title">Total Orders</span>
                                 <div class="summary-card-icon icon-blue"><i class="bi bi-bag-check-fill"></i></div>
                             </div>
                             <div class="summary-card-value" id="kpi-orders-count">0</div>
                             <div class="summary-card-footer">
                                 <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +6.2%</span>
-                                <span>Total Volume</span>
+                                <span>Unique Transactions</span>
                             </div>
                         </div>
 
                         <!-- Card 2: Customers -->
                         <div class="summary-card">
                             <div class="summary-card-header">
-                                <span class="summary-card-title">Customers</span>
+                                <span class="summary-card-title">Active Customers</span>
                                 <div class="summary-card-icon icon-purple"><i class="bi bi-people-fill"></i></div>
                             </div>
                             <div class="summary-card-value" id="kpi-customers-count">0</div>
                             <div class="summary-card-footer">
                                 <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +14.6%</span>
-                                <span>Active Accounts</span>
+                                <span>Verified Users</span>
                             </div>
                         </div>
 
                         <!-- Card 3: AOV -->
                         <div class="summary-card">
                             <div class="summary-card-header">
-                                <span class="summary-card-title">AOV</span>
+                                <span class="summary-card-title">Avg Order (AOV)</span>
                                 <div class="summary-card-icon icon-amber"><i class="bi bi-calculator-fill"></i></div>
                             </div>
-                            <div class="summary-card-value" id="kpi-aov-val">$0.00</div>
+                            <div class="summary-card-value" id="kpi-aov-val">₹0.00</div>
                             <div class="summary-card-footer">
                                 <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +4.8%</span>
-                                <span>Avg Revenue / Order</span>
+                                <span>Revenue / Order</span>
                             </div>
                         </div>
 
                         <!-- Card 4: Conversion Rate -->
                         <div class="summary-card">
                             <div class="summary-card-header">
-                                <span class="summary-card-title">Conversion</span>
+                                <span class="summary-card-title">Conversion Rate</span>
                                 <div class="summary-card-icon icon-emerald"><i class="bi bi-activity"></i></div>
                             </div>
                             <div class="summary-card-value" id="kpi-conversion-val">8.72%</div>
                             <div class="summary-card-footer">
                                 <span class="trend-badge trend-up"><i class="bi bi-arrow-up-short"></i> +2.4%</span>
-                                <span>Order Ratio</span>
+                                <span>Order / Customer</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 5: Target Progress -->
+                        <div class="summary-card">
+                            <div class="summary-card-header">
+                                <span class="summary-card-title">Monthly Target</span>
+                                <div class="summary-card-icon icon-rose"><i class="bi bi-bullseye"></i></div>
+                            </div>
+                            <div class="summary-card-value">91.4%</div>
+                            <div class="summary-card-footer">
+                                <div class="progress-bar-wrap" style="width: 100%;">
+                                    <div class="progress-bar-fill" style="width: 91.4%;"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Charts Row: Revenue Performance & Sales Breakdown -->
+                    <!-- Charts Row 1: Revenue Timeline & Sales Category Breakdown -->
                     <div class="charts-row-2">
                         <div class="chart-card">
                             <div class="chart-card-header">
-                                <h3><i class="bi bi-graph-up-arrow text-primary"></i> Revenue Performance</h3>
+                                <h3><i class="bi bi-graph-up-arrow text-primary"></i> Revenue Timeline</h3>
                                 <div class="period-btn-group">
                                     <button class="period-btn" onclick="setPeriodFilter('7D', this)">7D</button>
                                     <button class="period-btn active" onclick="setPeriodFilter('30D', this)">30D</button>
@@ -322,8 +367,8 @@
 
                         <div class="chart-card">
                             <div class="chart-card-header">
-                                <h3><i class="bi bi-pie-chart-fill text-cyan"></i> Sales Breakdown</h3>
-                                <span class="badge badge-completed">Share %</span>
+                                <h3><i class="bi bi-pie-chart-fill text-cyan"></i> Regional Sales Share</h3>
+                                <span class="badge badge-completed">Category Share %</span>
                             </div>
                             <div class="chart-container">
                                 <canvas id="doughnutChart"></canvas>
@@ -331,20 +376,29 @@
                         </div>
                     </div>
 
-                    <!-- Performance Grid Section -->
+                    <!-- Operational Performance & Activity Row -->
                     <div class="performance-grid">
                         <div class="performance-card">
                             <div class="performance-card-header">
-                                <h3><i class="bi bi-clock-history text-amber me-2"></i> Top Pending Orders by Destination</h3>
+                                <h3><i class="bi bi-bar-chart-steps text-cyan me-2"></i> Top Destinations Revenue</h3>
                             </div>
-                            <div class="performance-list" id="top-pending-list"></div>
+                            <div class="chart-container" style="height: 230px;">
+                                <canvas id="barChart"></canvas>
+                            </div>
                         </div>
 
                         <div class="performance-card">
                             <div class="performance-card-header">
-                                <h3><i class="bi bi-trophy-fill text-purple me-2"></i> Top Regional Sales Performance</h3>
+                                <h3><i class="bi bi-trophy-fill text-purple me-2"></i> Top Regional Sales</h3>
                             </div>
                             <div class="performance-list" id="top-regional-list"></div>
+                        </div>
+
+                        <div class="performance-card">
+                            <div class="performance-card-header">
+                                <h3><i class="bi bi-clock-history text-amber me-2"></i> Pending Transactions</h3>
+                            </div>
+                            <div class="performance-list" id="top-pending-list"></div>
                         </div>
                     </div>
                 </section>
@@ -356,16 +410,7 @@
                     <div class="charts-row-3">
                         <div class="chart-card">
                             <div class="chart-card-header">
-                                <h3><i class="bi bi-bar-chart-steps text-cyan"></i> Sales by Destination</h3>
-                            </div>
-                            <div class="chart-container">
-                                <canvas id="barChart"></canvas>
-                            </div>
-                        </div>
-
-                        <div class="chart-card">
-                            <div class="chart-card-header">
-                                <h3><i class="bi bi-activity text-emerald"></i> Daily Sales Performance</h3>
+                                <h3><i class="bi bi-activity text-emerald"></i> Daily Sales Trends</h3>
                             </div>
                             <div class="chart-container">
                                 <canvas id="areaChart"></canvas>
@@ -374,7 +419,7 @@
 
                         <div class="chart-card">
                             <div class="chart-card-header">
-                                <h3><i class="bi bi-pie-chart text-amber"></i> Pending vs Completed Orders</h3>
+                                <h3><i class="bi bi-pie-chart text-amber"></i> Order Fulfillment Status</h3>
                             </div>
                             <div class="chart-container">
                                 <canvas id="pendingChart"></canvas>
@@ -391,7 +436,10 @@
                         <!-- Orders Data Table -->
                         <div class="table-card">
                             <div class="table-card-header">
-                                <h3><i class="bi bi-bag-check-fill text-primary"></i> Orders Transaction Records</h3>
+                                <div>
+                                    <h3><i class="bi bi-bag-check-fill text-primary me-2"></i> Orders Transaction Records</h3>
+                                    <span style="font-size: 12px; color: var(--text-dim);">Click any row to inspect complete order details</span>
+                                </div>
                                 <span class="badge badge-growth" id="orders-count-badge">Live Records</span>
                             </div>
                             <div class="table-wrapper">
@@ -405,6 +453,7 @@
                                             <th>Discount</th>
                                             <th>Net Amount</th>
                                             <th>Date &amp; Time</th>
+                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="orders-tbody">
@@ -424,7 +473,7 @@
                         <!-- Users Data Table -->
                         <div class="table-card">
                             <div class="table-card-header">
-                                <h3><i class="bi bi-people-fill text-cyan"></i> Registered Customers</h3>
+                                <h3><i class="bi bi-people-fill text-cyan me-2"></i> Registered Customers</h3>
                             </div>
                             <div class="table-wrapper">
                                 <table class="data-table">
@@ -454,7 +503,7 @@
                         <!-- Destinations Data Table -->
                         <div class="table-card">
                             <div class="table-card-header">
-                                <h3><i class="bi bi-geo-alt-fill text-emerald"></i> Destinations Catalog</h3>
+                                <h3><i class="bi bi-geo-alt-fill text-emerald me-2"></i> Destinations Catalog</h3>
                             </div>
                             <div class="table-wrapper">
                                 <table class="data-table">
@@ -485,6 +534,72 @@
         </div>
     </div>
 
+    <!-- ========================================================
+         MODALS & DRAWERS
+         ======================================================== -->
+    
+    <!-- Modal: View Order Details -->
+    <div id="orderDetailsModal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 540px;">
+            <div class="modal-header">
+                <h3><i class="bi bi-receipt text-primary me-2"></i> Transaction Details</h3>
+                <button class="modal-close" onclick="closeModal('orderDetailsModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="order-details-body">
+                <!-- Dynamically Rendered -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('orderDetailsModal')">Close</button>
+                <button type="button" class="btn btn-primary-gradient" onclick="printOrderReceipt()"><i class="bi bi-printer-fill"></i> Print Receipt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Create New Order -->
+    <div id="addOrderModal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3><i class="bi bi-plus-circle-fill text-emerald me-2"></i> Create New Order</h3>
+                <button class="modal-close" onclick="closeModal('addOrderModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="add-order-form" onsubmit="handleNewOrderSubmit(event)">
+                    <div style="margin-bottom: 12px;">
+                        <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px;">Customer Name</label>
+                        <input type="text" id="new-cust-name" placeholder="e.g. Rahul Sharma" required class="form-control-input">
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px;">Destination / Package</label>
+                        <select id="new-dest-select" class="form-control-input">
+                            <option value="1223">Paris, France</option>
+                            <option value="1054">Tokyo, Japan</option>
+                            <option value="1102">Swiss Alps, Switzerland</option>
+                            <option value="1301">Dubai, UAE</option>
+                            <option value="1410">New York City, USA</option>
+                        </select>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div>
+                            <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px;">Gross Amount (₹)</label>
+                            <input type="number" step="0.01" id="new-amount" placeholder="2500" required class="form-control-input">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px;">Discount (₹)</label>
+                            <input type="number" step="0.01" id="new-discount" value="0" class="form-control-input">
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px;">Order Date &amp; Time</label>
+                        <input type="date" id="new-order-date" required class="form-control-input">
+                    </div>
+                    <button type="submit" class="btn btn-primary-gradient" style="width: 100%; padding: 10px; font-weight: 700;">
+                        <i class="bi bi-check-circle-fill"></i> Save Order Record
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal: SQL RLS Fix Script -->
     <div id="rlsModal" class="modal-overlay">
         <div class="modal-card">
@@ -494,7 +609,7 @@
             </div>
             <div class="modal-body">
                 <p style="font-size: 13px; color: var(--text-muted);">
-                    Copy and execute this script in your <a href="https://supabase.com/dashboard" target="_blank" style="color: var(--primary); font-weight: 600;">Supabase SQL Editor</a> to enable public API access for your 3 tables:
+                    Copy and execute this script in your <a href="https://supabase.com/dashboard" target="_blank" style="color: var(--primary); font-weight: 600;">Supabase SQL Editor</a> to enable public API access for your tables:
                 </p>
                 <div class="sql-box" id="sql-code">-- Step 1: Enable RLS on all 4 tables
 ALTER TABLE IF EXISTS public.orders ENABLE ROW LEVEL SECURITY;
@@ -519,6 +634,8 @@ CREATE POLICY "Allow public read access" ON public.destinations FOR SELECT USING
                 <button type="button" class="btn btn-primary" onclick="copyRlsSQL()"><i class="bi bi-clipboard"></i> Copy SQL Fix</button>
             </div>
         </div>
+    </div>
+
     <!-- Modal: Exchange Rate & API Key Configuration -->
     <div id="apiKeyModal" class="modal-overlay">
         <div class="modal-card">

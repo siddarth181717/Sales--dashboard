@@ -152,6 +152,56 @@ function toggleUsdConversion(checked) {
     renderDashboard();
 }
 
+function toggleCurrencyHeader(isInr) {
+    shouldConvertUsdToInr = isInr;
+    localStorage.setItem('soni_convert_usd', isInr ? 'true' : 'false');
+    const checkbox = document.getElementById('convert-usd-checkbox');
+    if (checkbox) checkbox.checked = isInr;
+    updateCurrencyPillsUI();
+    showToast(isInr ? 'Currency set to ₹ INR' : 'Currency set to $ USD', 'info');
+    renderDashboard();
+}
+
+function updateCurrencyPillsUI() {
+    const btnInr = document.getElementById('btn-currency-inr');
+    const btnUsd = document.getElementById('btn-currency-usd');
+    if (btnInr && btnUsd) {
+        if (shouldConvertUsdToInr) {
+            btnInr.classList.add('active');
+            btnUsd.classList.remove('active');
+        } else {
+            btnUsd.classList.add('active');
+            btnInr.classList.remove('active');
+        }
+    }
+}
+
+function resetAllFilters() {
+    searchQuery = '';
+    filterDate = 'ALL';
+    filterDestination = 'ALL';
+    filterRegion = 'ALL';
+    customSelectedDate = '';
+
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) searchInput.value = '';
+
+    const dateFilter = document.getElementById('filter-date');
+    if (dateFilter) dateFilter.value = 'ALL';
+
+    const destFilter = document.getElementById('filter-destination');
+    if (destFilter) destFilter.value = 'ALL';
+
+    const regionFilter = document.getElementById('filter-region');
+    if (regionFilter) regionFilter.value = 'ALL';
+
+    const calInput = document.getElementById('calendar-date-input');
+    if (calInput) calInput.value = '';
+
+    showToast('🔄 Filters reset to default', 'info');
+    renderDashboard();
+}
+
 function updateFxUI() {
     const rateText = document.getElementById('fx-rate-text');
     if (rateText) rateText.textContent = `1 USD = ₹${currentFxRate.toFixed(2)}`;
@@ -164,6 +214,8 @@ function updateFxUI() {
 
     const notifItem = document.getElementById('notif-order-amount');
     if (notifItem) notifItem.textContent = `Order #1042 (${formatRupees(2450)})`;
+
+    updateCurrencyPillsUI();
 }
 
 // Currency Formatting Helper (Database raw values are already in Rupees ₹)
@@ -983,7 +1035,7 @@ function renderOrdersTable() {
             : (o.order_date_time || 'N/A');
 
         return `
-            <tr>
+            <tr onclick="viewOrderDetails(${o.order_no})" title="Click to view full transaction details">
                 <td><strong>#${o.order_no}</strong></td>
                 <td><span style="color: var(--primary); font-weight: 600;">${escapeHtml(custName)}</span></td>
                 <td><span style="font-size: 12px; color: var(--text-muted);">${escapeHtml(destInfo.name)}</span></td>
@@ -991,6 +1043,11 @@ function renderOrdersTable() {
                 <td style="color: var(--accent-rose);">${discount > 0 ? '-' + formatRupees(discount) : formatRupees(0)}</td>
                 <td><strong style="color: var(--accent-emerald);">${formatRupees(net)}</strong></td>
                 <td style="font-size: 12px; color: var(--text-dim);">${escapeHtml(formattedDt)}</td>
+                <td>
+                    <button class="btn btn-sm btn-secondary-outline" onclick="event.stopPropagation(); viewOrderDetails(${o.order_no})" style="padding: 3px 10px; font-size: 11.5px;">
+                        <i class="bi bi-eye-fill"></i> Details
+                    </button>
+                </td>
             </tr>
         `;
     }).join('');
@@ -1088,8 +1145,119 @@ function prevDestinationsPage() { if (destinationsPage > 1) { destinationsPage--
 function nextDestinationsPage() { destinationsPage++; renderDestinationsTable(); }
 
 // Modal Controllers
-function openModal(id) { document.getElementById(id).classList.add('active'); }
-function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function openModal(id) { 
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
+}
+function closeModal(id) { 
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+}
+
+// Order Details Modal Handler
+function viewOrderDetails(orderNo) {
+    const o = ordersData.find(item => item.order_no == orderNo);
+    if (!o) return;
+
+    const u = userMap.get(String(o.user_id));
+    const custName = u ? u.name : `User #${o.user_id}`;
+    const custContact = u ? `+${u.country_code || '91'} ${u.mobile || 'N/A'}` : 'N/A';
+    const destInfo = getDestinationInfo(o.product_id);
+    const gross = Number(o.amount || 0);
+    const discount = Number(o.discount_amount || 0);
+    const net = gross - discount;
+    const dt = parseOrderDate(o.order_date_time);
+    const formattedDt = dt ? dt.toLocaleString() : (o.order_date_time || 'N/A');
+
+    const container = document.getElementById('order-details-body');
+    if (container) {
+        container.innerHTML = `
+            <div style="background: var(--bg-input); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase;">Order Reference</span>
+                        <h4 style="font-size: 18px; font-weight: 800; color: var(--primary);">#${o.order_no}</h4>
+                    </div>
+                    <span class="badge badge-growth">${discount > 0 ? 'Discounted Sale' : 'Standard Sale'}</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                    <div>
+                        <span style="color: var(--text-dim); font-size: 11px; display: block;">Customer</span>
+                        <strong>${escapeHtml(custName)}</strong>
+                    </div>
+                    <div>
+                        <span style="color: var(--text-dim); font-size: 11px; display: block;">Contact</span>
+                        <strong>${escapeHtml(custContact)}</strong>
+                    </div>
+                    <div>
+                        <span style="color: var(--text-dim); font-size: 11px; display: block;">Destination</span>
+                        <strong>${escapeHtml(destInfo.name)}</strong>
+                    </div>
+                    <div>
+                        <span style="color: var(--text-dim); font-size: 11px; display: block;">Region</span>
+                        <strong>${escapeHtml(destInfo.region)}</strong>
+                    </div>
+                    <div>
+                        <span style="color: var(--text-dim); font-size: 11px; display: block;">Transaction Date</span>
+                        <strong>${escapeHtml(formattedDt)}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; font-size: 13px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: var(--text-muted);">Gross Order Amount</span>
+                    <strong>${formatCurrency(gross)}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: var(--accent-rose);">
+                    <span>Discount Applied</span>
+                    <strong>-${formatCurrency(discount)}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 10px; font-size: 15px; color: var(--accent-emerald);">
+                    <strong>Net Total Revenue</strong>
+                    <strong>${formatCurrency(net)}</strong>
+                </div>
+            </div>
+        `;
+    }
+
+    openModal('orderDetailsModal');
+}
+
+function printOrderReceipt() {
+    showToast('🖨️ Receipt sent to printer / saved as PDF', 'success');
+}
+
+// Create New Order Form Handler
+function handleNewOrderSubmit(e) {
+    e.preventDefault();
+    const custName = document.getElementById('new-cust-name').value.trim();
+    const prodId = Number(document.getElementById('new-dest-select').value) || 1223;
+    const amount = Number(document.getElementById('new-amount').value) || 0;
+    const discount = Number(document.getElementById('new-discount').value) || 0;
+    const orderDate = document.getElementById('new-order-date').value || getIsoDateStr(new Date());
+
+    const newOrderNo = ordersData.length > 0 ? Math.max(...ordersData.map(o => Number(o.order_no) || 0)) + 1 : 2001;
+    const newUserId = 9000 + Math.floor(Math.random() * 900);
+
+    const newOrder = {
+        order_no: newOrderNo,
+        user_id: newUserId,
+        product_id: prodId,
+        amount: amount,
+        discount_amount: discount,
+        created_by: 1001,
+        order_date_time: orderDate
+    };
+
+    userMap.set(String(newUserId), { user_id: newUserId, name: custName, mobile: '9876543210', user_role: 1, created_dateTime: orderDate });
+    ordersData.unshift(newOrder);
+
+    closeModal('addOrderModal');
+    document.getElementById('add-order-form').reset();
+    showToast(`🎉 Order #${newOrderNo} created successfully!`, 'success');
+    renderDashboard();
+}
 
 // Single Click CSV Export
 function exportToCSV() {
